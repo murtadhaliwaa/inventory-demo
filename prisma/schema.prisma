@@ -1,0 +1,69 @@
+// نظام المهند للمخازن (AL-MUHANAD WMS) — PostgreSQL / Supabase
+// الحقول العددية: Decimal(18,4) للكميات الدقيقة
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// إضافة وارد من مورد، أو سحب من المخزن
+enum TransactionType {
+  ADD
+  WITHDRAW
+}
+
+/// مورد (تاجر)
+model Supplier {
+  id           String        @id @default(cuid())
+  name         String
+  phone        String?
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  transactions Transaction[]
+
+  @@index([name])
+  @@map("suppliers")
+}
+
+/// مادة مخزنية مع الرصيد الحالي وحد الإنذار
+model Item {
+  id              String        @id @default(cuid())
+  name            String
+  /// الرصيد الحالي (يُحدَّث مع كل حركة)
+  currentQuantity Decimal       @default(0) @map("current_quantity") @db.Decimal(18, 4)
+  /// الحد الأدنى للإنذار (Alert Level)
+  minThreshold    Decimal       @map("min_threshold") @db.Decimal(18, 4)
+  /// TON | KG | PIECE (نص لتجنّب فقدان بيانات عند الترقية من وحدات حرّة)
+  unit            String        @db.VarChar(16)
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  transactions Transaction[]
+
+  @@index([name])
+  @@map("items")
+}
+
+/// حركة مخزون: إضافة (مع مورد اختياري لرصيد افتتاحي) أو سحب
+model Transaction {
+  id         String            @id @default(cuid())
+  itemId     String            @map("item_id")
+  item       Item              @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  type       TransactionType
+  quantity   Decimal           @db.Decimal(18, 4)
+  /// مطلوب منطقياً لنوع ADD من واجهة التوريد؛ اختياري لرصيد افتتاحي
+  supplierId String?           @map("supplier_id")
+  supplier   Supplier?         @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  note       String?           @db.Text
+  createdAt  DateTime          @default(now()) @map("created_at")
+
+  @@index([itemId, createdAt])
+  @@index([createdAt])
+  @@index([createdAt, id])
+  @@index([supplierId])
+  @@map("transactions")
+}

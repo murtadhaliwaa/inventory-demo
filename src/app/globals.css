@@ -1,0 +1,229 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * AL-MUHANAD WMS — تصميم موحّد
+ * - الثيم: class على <html> عبر next-themes (.dark للوضع الليلي)
+ * - الألوان: HSL فقط حتى تبقى متوافقة مع html2canvas وأدوات أخرى
+ */
+:root {
+  --radius: 0.625rem;
+  --background: hsl(40 10% 96%);
+  --foreground: hsl(240 10% 9%);
+  --card: hsl(40 8% 99.5%);
+  --card-foreground: hsl(240 8% 11%);
+  --popover: hsl(40 6% 99%);
+  --popover-foreground: hsl(240 8% 12%);
+  --primary: hsl(32 88% 34%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(40 8% 91%);
+  --secondary-foreground: hsl(240 8% 16%);
+  --muted: hsl(40 9% 91%);
+  /* تباين أوضح للنص الثانوي (قراءة / WCAG) */
+  --muted-foreground: hsl(240 6% 28%);
+  --accent: hsl(34 18% 88%);
+  --accent-foreground: hsl(240 8% 15%);
+  --destructive: hsl(0 70% 44%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(40 6% 85%);
+  --input: hsl(40 5% 87%);
+  --ring: hsl(32 86% 38%);
+  --sidebar: hsl(38 9% 92%);
+  --sidebar-foreground: hsl(240 7% 15%);
+  --sidebar-primary: hsl(32 90% 36%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(36 10% 86%);
+  --sidebar-accent-foreground: hsl(240 7% 16%);
+  --sidebar-border: hsl(40 6% 82%);
+  --sidebar-ring: hsl(32 86% 38%);
+  --wms-surface-elevated: 0 1px 3px hsl(40 15% 10% / 0.06);
+  --wms-surface-mid: 0 4px 24px hsl(240 20% 4% / 0.05);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-baloo);
+  --font-mono: var(--font-geist-mono);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --shadow-wms-elevated: var(--wms-surface-elevated);
+  --shadow-wms-mid: var(--wms-surface-mid);
+}
+
+.dark {
+  --background: hsl(240 9% 6%);
+  --foreground: hsl(45 8% 96%);
+  --card: hsl(240 8% 8%);
+  --card-foreground: hsl(45 6% 96%);
+  --popover: hsl(240 8% 7.5%);
+  --popover-foreground: hsl(45 6% 96%);
+  --primary: hsl(38 100% 52%);
+  --primary-foreground: hsl(240 12% 5%);
+  --secondary: hsl(240 6% 16%);
+  --secondary-foreground: hsl(45 6% 93%);
+  --muted: hsl(240 5% 16%);
+  --muted-foreground: hsl(240 5% 72%);
+  --accent: hsl(32 8% 18%);
+  --accent-foreground: hsl(45 6% 95%);
+  --destructive: hsl(0 62% 48%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(240 5% 18%);
+  --input: hsl(240 5% 14%);
+  --ring: hsl(38 100% 52%);
+  --sidebar: hsl(240 8% 6.5%);
+  --sidebar-foreground: hsl(45 6% 93%);
+  --sidebar-primary: hsl(38 100% 52%);
+  --sidebar-primary-foreground: hsl(240 12% 5%);
+  --sidebar-accent: hsl(240 5% 14%);
+  --sidebar-accent-foreground: hsl(45 6% 93%);
+  --sidebar-border: hsl(240 4% 18%);
+  --sidebar-ring: hsl(38 100% 52%);
+  /* ظلال أخف في الوضع الليلي — أوضح للنصوص وأقل إرهاقاً بصرياً */
+  --wms-surface-elevated: 0 1px 0 hsl(0 0% 100% / 0.05) inset, 0 2px 14px hsl(0 0% 0% / 0.2);
+  --wms-surface-mid: 0 4px 22px hsl(0 0% 0% / 0.22);
+}
+
+body {
+  @apply min-h-svh antialiased;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: hsl(32 80% 45% / 0.22);
+  color: inherit;
+}
+.dark ::selection {
+  background: hsl(34 100% 50% / 0.25);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  /* تركيز لوحة المفاتيح واضح دون تعارض مع مكوّنات shadcn */
+  :where(a):focus-visible {
+    @apply rounded-sm outline-none ring-2 ring-ring/60 ring-offset-2 ring-offset-background;
+  }
+}
+
+/* شريط تأكيد بصري تحت عناوين الصفحات — مصدر واحد بدل تكرار التدرج */
+.wms-page-accent-line {
+  height: 4px;
+  width: 3rem;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to left,
+    hsl(32 88% 34%),
+    hsl(28 85% 42%)
+  );
+}
+.dark .wms-page-accent-line {
+  background: linear-gradient(
+    to left,
+    hsl(38 100% 52%),
+    hsl(32 90% 44%)
+  );
+}
+
+/* خلفية لطيفة لمنطقة المحتوى (Light / Dark) */
+.wms-content-shell {
+  @apply min-h-[calc(100svh-3.5rem)];
+  background: linear-gradient(
+    180deg,
+    hsl(40 10% 97%) 0%,
+    hsl(40 6% 95%) 45%,
+    hsl(40 5% 94%) 100%
+  );
+}
+.dark .wms-content-shell {
+  background: linear-gradient(180deg, hsl(240 8% 6%) 0%, hsl(240 7% 5%) 100%);
+}
+
+/* بطاقة KPI — بدون ظل ثقيل؛ الهوفر عبر الحدود والخلفية خفيفة */
+.wms-stat-card {
+  @apply relative overflow-hidden border border-border/60 bg-card shadow-none;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+.wms-stat-card:hover:not(.wms-stat-card--danger) {
+  @apply border-primary/25 bg-muted/[0.035];
+}
+.dark .wms-stat-card:hover:not(.wms-stat-card--danger) {
+  @apply border-primary/32 bg-muted/12;
+}
+.wms-stat-card--danger:hover {
+  @apply border-red-700 bg-red-50/40 dark:border-red-400 dark:bg-red-950/28;
+}
+.wms-stat-card::before {
+  content: "";
+  @apply pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-primary/12 to-transparent;
+}
+.dark .wms-stat-card::before {
+  @apply via-primary/22;
+}
+
+/* بطاقات الجداول في لوحة التحكم */
+.wms-dashboard-panel {
+  @apply rounded-2xl border border-border/60 bg-card shadow-none;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+.wms-dashboard-panel:hover:not(.wms-dashboard-panel--alert) {
+  @apply border-primary/22 bg-muted/[0.035];
+}
+.dark .wms-dashboard-panel:hover:not(.wms-dashboard-panel--alert) {
+  @apply border-primary/28 bg-muted/10;
+}
+.wms-dashboard-panel--alert {
+  @apply border-2 border-red-600 shadow-none dark:border-red-500;
+}
+.wms-dashboard-panel--alert:hover {
+  @apply border-red-700 bg-red-50/50 dark:border-red-400 dark:bg-red-950/38;
+}
+
+/* جدول/لوح داخل حاوية */
+.wms-panel {
+  @apply border-border/70 bg-card/80 overflow-hidden rounded-2xl border shadow-[var(--wms-surface-elevated)] backdrop-blur-[2px];
+}
+.dark .wms-panel {
+  @apply bg-card/90;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,108 @@
+import { z } from "zod"
+import { TransactionType } from "@/generated/prisma"
+import { ITEM_UNITS } from "@/lib/item-unit"
+
+const unitSchema = z.enum(ITEM_UNITS)
+
+const idSchema = z.string().min(1, "مُعرف غير صالح")
+
+const quantityField = z.coerce
+  .number()
+  .positive("يجب أن تكون الكمية أكبر من صفر")
+  .finite()
+  .refine(
+    (n) => n <= 1_000_000_000_000,
+    "القيمة كبيرة جداً (تحقق من وحدات القياس)"
+  )
+
+const itemBodySchema = {
+  name: z.string().trim().min(1, "الاسم مطلوب").max(200, "الاسم طويل جداً"),
+  minThreshold: z.coerce.number().min(0, "الحد يجب أن يكون ≥ 0").finite(),
+  unit: unitSchema,
+} as const
+
+/** إنشاء مادة: رصيد افتتاحي &gt; 0 يُسجَّل كإضافة بدون مورد */
+export const itemCreateSchema = z.object({
+  name: itemBodySchema.name,
+  minThreshold: itemBodySchema.minThreshold,
+  unit: itemBodySchema.unit,
+  currentQuantity: z.coerce
+    .number()
+    .min(0, "المخزون الابتدائي ≥ 0")
+    .finite(),
+})
+
+export const itemUpdateSchema = z.object({
+  id: idSchema,
+  name: itemBodySchema.name,
+  minThreshold: itemBodySchema.minThreshold,
+  unit: itemBodySchema.unit,
+})
+
+export const itemDeleteSchema = z.object({ id: idSchema })
+
+export const supplierCreateSchema = z.object({
+  name: z.string().trim().min(1, "اسم المورد مطلوب").max(200),
+  phone: z
+    .string()
+    .trim()
+    .max(40)
+    .optional()
+    .or(z.literal("")),
+})
+
+/** إضافة مواد: مورد موجود أو اسم تاجر جديد */
+export const transactionAddSchema = z
+  .object({
+    itemId: idSchema,
+    type: z.literal(TransactionType.ADD),
+    quantity: quantityField,
+    supplierId: z
+      .string()
+      .trim()
+      .optional()
+      .or(z.literal("")),
+    newSupplierName: z.string().trim().max(200).optional().or(z.literal("")),
+    newSupplierPhone: z.string().trim().max(40).optional().or(z.literal("")),
+    note: z
+      .string()
+      .trim()
+      .max(500)
+      .optional()
+      .or(z.literal("")),
+  })
+  .superRefine((data, ctx) => {
+    const sid = data.supplierId?.trim()
+    const newName = data.newSupplierName?.trim()
+    if (!sid && !newName) {
+      ctx.addIssue({
+        code: "custom",
+        message: "اختر مورداً من القائمة أو أدخل اسم تاجر جديد",
+        path: ["supplierId"],
+      })
+    }
+    if (sid && newName) {
+      ctx.addIssue({
+        code: "custom",
+        message: "استخدم إما قائمة الموردين أو حقل التاجر الجديد، وليس الاثنين",
+        path: ["newSupplierName"],
+      })
+    }
+  })
+
+export const transactionWithdrawSchema = z.object({
+  itemId: idSchema,
+  type: z.literal(TransactionType.WITHDRAW),
+  quantity: quantityField,
+  note: z
+    .string()
+    .trim()
+    .max(500)
+    .optional()
+    .or(z.literal("")),
+})
+
+export type ItemCreateInput = z.infer<typeof itemCreateSchema>
+export type ItemUpdateInput = z.infer<typeof itemUpdateSchema>
+export type TransactionAddInput = z.infer<typeof transactionAddSchema>
+export type TransactionWithdrawInput = z.infer<typeof transactionWithdrawSchema>

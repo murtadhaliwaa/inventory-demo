@@ -124,11 +124,12 @@ function AddMaterialsForm({ items, suppliers }: Props) {
 
           <div className="space-y-2">
             <Label>المورد</Label>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
               <Button
                 type="button"
-                size="sm"
+                size="default"
                 variant={supplierMode === "existing" ? "secondary" : "outline"}
+                className="min-h-10 w-full touch-manipulation sm:w-auto"
                 onClick={() => setSupplierMode("existing")}
                 disabled={suppliers.length === 0}
               >
@@ -136,8 +137,9 @@ function AddMaterialsForm({ items, suppliers }: Props) {
               </Button>
               <Button
                 type="button"
-                size="sm"
+                size="default"
                 variant={supplierMode === "new" ? "secondary" : "outline"}
+                className="min-h-10 w-full touch-manipulation sm:w-auto"
                 onClick={() => setSupplierMode("new")}
               >
                 تاجر جديد

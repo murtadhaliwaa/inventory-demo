@@ -86,7 +86,7 @@ function KpiStat({
   return (
     <Card
       className={cn(
-        "wms-stat-card rounded-2xl border-border/60 shadow-none",
+        "wms-stat-card touch-manipulation rounded-2xl border-border/60 shadow-none",
         danger && "wms-stat-card--danger border-red-600 dark:border-red-500"
       )}
     >
@@ -120,7 +120,7 @@ function KpiStat({
 
 function KpiGrid({ rows, data, columns }: { rows: KpiRow[]; data: DashboardData; columns: string }) {
   return (
-    <div className={cn("grid gap-3", columns)}>
+    <div className={cn("grid grid-cols-1 gap-3", columns)}>
       {rows.map((row) => {
         const { value, danger } = row.resolve(data)
         return (

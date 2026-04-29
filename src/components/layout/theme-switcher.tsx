@@ -52,8 +52,12 @@ export function ThemeSwitcher({
       <Button
         type="button"
         variant="outline"
-        size="icon-sm"
-        className={cn("rounded-full", className)}
+        size={variant === "toolbar" ? "icon" : "icon-sm"}
+        className={cn(
+          "rounded-full",
+          variant === "toolbar" && "h-10 w-10 min-h-10 min-w-10 sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9",
+          className
+        )}
         disabled
         aria-hidden
       />
@@ -66,9 +70,10 @@ export function ThemeSwitcher({
         <Button
           type="button"
           variant={variant === "sidebar" ? "ghost" : "outline"}
-          size="icon-sm"
+          size={variant === "toolbar" ? "icon" : "icon-sm"}
           className={cn(
             "rounded-full shrink-0 border-sidebar-border/80",
+            variant === "toolbar" && "h-10 w-10 min-h-10 min-w-10 sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9",
             variant === "sidebar" && "border border-transparent hover:bg-sidebar-accent",
             className
           )}

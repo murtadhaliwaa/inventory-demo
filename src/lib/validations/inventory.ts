@@ -51,6 +51,19 @@ export const supplierCreateSchema = z.object({
     .or(z.literal("")),
 })
 
+export const supplierUpdateSchema = z.object({
+  id: idSchema,
+  name: z.string().trim().min(1, "اسم المورد مطلوب").max(200),
+  phone: z
+    .string()
+    .trim()
+    .max(40)
+    .optional()
+    .or(z.literal("")),
+})
+
+export const supplierDeleteSchema = z.object({ id: idSchema })
+
 /** إضافة مواد: مورد موجود أو اسم تاجر جديد */
 export const transactionAddSchema = z
   .object({

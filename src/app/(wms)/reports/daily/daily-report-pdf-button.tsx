@@ -1,17 +1,14 @@
 "use client"
 
 import { useRef, useState, type CSSProperties } from "react"
+import { flushSync } from "react-dom"
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
 import { FileDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import type { DailyPdfPayload } from "@/lib/daily-report-pdf-types"
 
-export type DailyPdfPayload = {
-  dateLabel: string
-  adds: { time: string; itemName: string; supplierName: string; qtyUnit: string }[]
-  withdraws: { time: string; itemName: string; qtyUnit: string }[]
-  balances: { itemName: string; qtyUnit: string }[]
-}
+export type { DailyPdfPayload }
 
 const C = {
   bg: "#ffffff",
@@ -28,19 +25,37 @@ function asciiPdfFileName(dateLabel: string) {
   return `muhanad-wms-daily-${digits || Date.now()}.pdf`
 }
 
+type ExportDailyPdfButtonProps =
+  | { payload: DailyPdfPayload; loadPayload?: undefined }
+  | { loadPayload: () => Promise<DailyPdfPayload>; payload?: undefined }
+
 /**
  * تصدير PDF — ألوان hex فقط (html2canvas لا يدعم lab() من Tailwind)
  * العنصر مرئي للرaster (opacity 1) ومزاح خارج الشاشة
  */
-export function ExportDailyPdfButton({ payload }: { payload: DailyPdfPayload }) {
+export function ExportDailyPdfButton(props: ExportDailyPdfButtonProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [busy, setBusy] = useState(false)
+  const [loaded, setLoaded] = useState<DailyPdfPayload | null>(
+    "payload" in props && props.payload ? props.payload : null
+  )
+
+  const payload = loaded ?? ("payload" in props ? props.payload ?? null : null)
 
   async function exportPdf() {
-    const el = ref.current
-    if (!el) return
     setBusy(true)
     try {
+      let data = payload
+      if (!data && "loadPayload" in props && props.loadPayload) {
+        data = await props.loadPayload()
+        flushSync(() => {
+          setLoaded(data)
+        })
+      }
+      if (!data) return
+
+      const el = ref.current
+      if (!el) return
       await document.fonts.ready.catch(() => {})
       await new Promise<void>((resolve) => {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
@@ -92,7 +107,7 @@ export function ExportDailyPdfButton({ payload }: { payload: DailyPdfPayload }) 
         heightLeft -= pageHeight - margin * 2
       }
 
-      pdf.save(asciiPdfFileName(payload.dateLabel))
+      pdf.save(asciiPdfFileName(data.dateLabel))
     } catch (e) {
       console.error("[PDF export]", e)
       const detail = e instanceof Error ? e.message : String(e)
@@ -154,7 +169,14 @@ export function ExportDailyPdfButton({ payload }: { payload: DailyPdfPayload }) 
 
   return (
     <>
-      <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => void exportPdf()} disabled={busy}>
+      <Button
+        type="button"
+        variant="outline"
+        size="default"
+        className="min-h-11 w-full touch-manipulation gap-2 sm:w-auto sm:min-h-9"
+        onClick={() => void exportPdf()}
+        disabled={busy}
+      >
         <FileDown className="size-3.5" />
         {busy ? "جاري التصدير…" : "تصدير تقرير اليوم PDF"}
       </Button>
@@ -162,12 +184,12 @@ export function ExportDailyPdfButton({ payload }: { payload: DailyPdfPayload }) 
       <div ref={ref} style={wrap} dir="rtl" aria-hidden>
         <div style={headerRule}>
           <h1 style={h1}>شركة المهند — تقرير مخزون يومي</h1>
-          <p style={dateLine}>{payload.dateLabel}</p>
+          <p style={dateLine}>{payload?.dateLabel ?? "…"}</p>
         </div>
 
         <section style={sectionGap}>
           <h2 style={h2Red}>المواد المضافة (مع المورد)</h2>
-          {payload.adds.length === 0 ? (
+          {(payload?.adds ?? []).length === 0 ? (
             <p style={emptyMsg}>لا إضافات مسجّلة اليوم.</p>
           ) : (
             <table style={tableBase}>
@@ -180,7 +202,7 @@ export function ExportDailyPdfButton({ payload }: { payload: DailyPdfPayload }) 
                 </tr>
               </thead>
               <tbody>
-                {payload.adds.map((r, i) => (
+                {(payload?.adds ?? []).map((r, i) => (
                   <tr key={i}>
                     <td style={{ ...thTd, borderColor: C.cellBorder, textAlign: "start" }}>
                       <span dir="ltr" style={{ display: "inline-block" }}>
@@ -208,7 +230,7 @@ export function ExportDailyPdfButton({ payload }: { payload: DailyPdfPayload }) 
 
         <section style={sectionGap}>
           <h2 style={h2}>المواد المسحوبة</h2>
-          {payload.withdraws.length === 0 ? (
+          {(payload?.withdraws ?? []).length === 0 ? (
             <p style={emptyMsg}>لا سحوبات مسجّلة اليوم.</p>
           ) : (
             <table style={tableBase}>
@@ -220,7 +242,7 @@ export function ExportDailyPdfButton({ payload }: { payload: DailyPdfPayload }) 
                 </tr>
               </thead>
               <tbody>
-                {payload.withdraws.map((r, i) => (
+                {(payload?.withdraws ?? []).map((r, i) => (
                   <tr key={i}>
                     <td style={{ ...thTd, borderColor: C.cellBorder, textAlign: "start" }}>
                       <span dir="ltr" style={{ display: "inline-block" }}>
@@ -255,7 +277,7 @@ export function ExportDailyPdfButton({ payload }: { payload: DailyPdfPayload }) 
               </tr>
             </thead>
             <tbody>
-              {payload.balances.map((r, i) => (
+              {(payload?.balances ?? []).map((r, i) => (
                 <tr key={i}>
                   <td style={{ ...thTd, borderColor: C.cellBorder, textAlign: "start" }}>{r.itemName}</td>
                   <td

@@ -1,6 +1,7 @@
 "use client"
 
 import { useId, useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import type { ItemForClient } from "@/lib/serialize-inventory"
 import { createItem, updateItem, deleteItem } from "@/lib/actions/inventory"
 import { itemCreateSchema, itemUpdateSchema } from "@/lib/validations/inventory"
@@ -59,6 +60,7 @@ function fieldsCreate(tId: string) {
 }
 
 function CreateForm({ onClose }: { onClose: () => void }) {
+  const router = useRouter()
   const [p, t] = useTransition()
   const tId = useId()
   return (
@@ -82,6 +84,7 @@ function CreateForm({ onClose }: { onClose: () => void }) {
           if (r.success) {
             toast.success("تمت الإضافة")
             onClose()
+            router.refresh()
           } else {
             toast.error("error" in r ? (r as { error: string }).error : "فشل")
           }
@@ -123,6 +126,7 @@ export function CreateItemButton() {
 }
 
 function EditForm({ item, onClose }: { item: ItemForClient; onClose: () => void }) {
+  const router = useRouter()
   const [p, t] = useTransition()
   const tId = useId()
   return (
@@ -146,6 +150,7 @@ function EditForm({ item, onClose }: { item: ItemForClient; onClose: () => void 
           if (r.success) {
             toast.success("تُمّ التعديل")
             onClose()
+            router.refresh()
           } else {
             toast.error("error" in r ? (r as { error: string }).error : "فشل")
           }
@@ -226,9 +231,19 @@ export function EditItemButton({ item }: { item: ItemForClient }) {
   )
 }
 
-export function DeleteItemButton({ itemId, nameDisplay }: { itemId: string; nameDisplay: string }) {
+export function DeleteItemButton({
+  itemId,
+  nameDisplay,
+  canDelete = true,
+}: {
+  itemId: string
+  nameDisplay: string
+  canDelete?: boolean
+}) {
+  const router = useRouter()
   const [open, set] = useState(false)
   const [p, t] = useTransition()
+  if (!canDelete) return null
   return (
     <AlertDialog open={open} onOpenChange={set}>
       <Button
@@ -244,7 +259,10 @@ export function DeleteItemButton({ itemId, nameDisplay }: { itemId: string; name
       <AlertDialogContent className="max-w-md" dir="rtl" onOpenAutoFocus={(e) => e.preventDefault()}>
         <AlertDialogHeader>
           <AlertDialogTitle>حذف {nameDisplay}؟</AlertDialogTitle>
-          <AlertDialogDescription>تُحذف أيضاً كل حركات هذه المادة. لا يُمكن التراجع.</AlertDialogDescription>
+          <AlertDialogDescription>
+            يُسمح بالحذف فقط إن لم تُسجَّل أي حركة لهذه المادة. إن وُجدت حركات، سيظهر خطأ ولن يُحذف السجل
+            التاريخي.
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>إلغاء</AlertDialogCancel>
@@ -255,6 +273,7 @@ export function DeleteItemButton({ itemId, nameDisplay }: { itemId: string; name
                 const r = await deleteItem({ id: itemId })
                 if (r.success) {
                   toast.success("تم الحذف")
+                  router.refresh()
                 } else {
                   toast.error("error" in r ? (r as { error: string }).error : "فشل")
                 }

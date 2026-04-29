@@ -52,7 +52,7 @@ model Item {
 model Transaction {
   id         String            @id @default(cuid())
   itemId     String            @map("item_id")
-  item       Item              @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item       Item              @relation(fields: [itemId], references: [id], onDelete: Restrict)
   type       TransactionType
   quantity   Decimal           @db.Decimal(18, 4)
   /// مطلوب منطقياً لنوع ADD من واجهة التوريد؛ اختياري لرصيد افتتاحي

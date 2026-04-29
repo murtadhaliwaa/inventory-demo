@@ -19,7 +19,15 @@ import { cn } from "@/lib/utils"
 
 const pageSize = 8
 
-export function ItemsDataTable({ items: src }: { items: ItemForClient[] }) {
+export function ItemsDataTable({
+  items: src,
+  canDelete = true,
+  serverPagination,
+}: {
+  items: ItemForClient[]
+  canDelete?: boolean
+  serverPagination?: { page: number; totalPages: number; total: number; pageSize: number }
+}) {
   const [q, setQ] = useState("")
   const [unitFilter, setUnitFilter] = useState<"all" | ItemUnit>("all")
   const rows = useMemo(() => {
@@ -78,14 +86,14 @@ export function ItemsDataTable({ items: src }: { items: ItemForClient[] }) {
           return (
             <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:justify-end">
               <EditItemButton item={r} />
-              <DeleteItemButton nameDisplay={r.name} itemId={r.id} />
+              <DeleteItemButton nameDisplay={r.name} itemId={r.id} canDelete={canDelete} />
             </div>
           )
         },
         enableHiding: false,
       },
     ],
-    []
+    [canDelete]
   )
 
   const table = useReactTable({
@@ -198,13 +206,23 @@ export function ItemsDataTable({ items: src }: { items: ItemForClient[] }) {
         </Table>
         <div className="text-muted-foreground border-t px-2 py-2.5 text-xs sm:flex sm:items-center sm:justify-between">
           <div>
-            عرض {table.getRowModel().rows.length} / {rows.length} نتائج
+            {serverPagination ? (
+              <>
+                عرض الجدول: {table.getRowModel().rows.length} / {rows.length} في هذه الصفحة — من أصل{" "}
+                {serverPagination.total} مادة (صفحة {serverPagination.page} / {serverPagination.totalPages})
+              </>
+            ) : (
+              <>
+                عرض {table.getRowModel().rows.length} / {rows.length} نتائج
+              </>
+            )}
           </div>
           <div className="mt-2 flex gap-2 sm:mt-0">
             <Button
               type="button"
-              size="sm"
+              size="default"
               variant="outline"
+              className="min-h-10 touch-manipulation sm:min-h-9"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
@@ -212,8 +230,9 @@ export function ItemsDataTable({ items: src }: { items: ItemForClient[] }) {
             </Button>
             <Button
               type="button"
-              size="sm"
+              size="default"
               variant="outline"
+              className="min-h-10 touch-manipulation sm:min-h-9"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >

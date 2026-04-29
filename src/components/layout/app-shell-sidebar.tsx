@@ -1,6 +1,15 @@
 "use client"
 
-import { Factory, LayoutGrid, ListTree, LogOut, Package, ScrollText, ClipboardList } from "lucide-react"
+import {
+  Factory,
+  LayoutGrid,
+  ListTree,
+  LogOut,
+  Package,
+  ScrollText,
+  ClipboardList,
+  Truck,
+} from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { isSupabaseConfigured } from "@/lib/env"
@@ -25,6 +34,7 @@ const items = [
   { href: "/", label: "اللوحة", icon: LayoutGrid },
   { href: "/operations", label: "العمليات اليومية", icon: ClipboardList },
   { href: "/items", label: "المواد", icon: Package },
+  { href: "/suppliers", label: "الموردون", icon: Truck },
   { href: "/reports/daily", label: "التقرير اليومي", icon: ScrollText },
 ]
 
@@ -63,16 +73,17 @@ export function AppShellSidebar() {
                   <SidebarMenuItem key={href}>
                     <SidebarMenuButton
                       asChild
+                      size="lg"
                       isActive={active}
                       className={cn(
-                        "justify-end rounded-xl transition-[background-color,box-shadow,border-color]",
+                        "touch-manipulation justify-end rounded-xl py-3 transition-[background-color,box-shadow,border-color] group-data-[collapsible=icon]:py-2!",
                         active && "shadow-[var(--wms-surface-elevated)]"
                       )}
                     >
                       <Link
                         href={href}
                         className={cn(
-                          "w-full rounded-xl !text-start",
+                          "flex min-h-10 w-full items-center justify-end gap-2 rounded-xl py-1 !text-start sm:min-h-0",
                           active &&
                             "border-s-2 border-primary bg-sidebar-accent/90 text-sidebar-accent-foreground"
                         )}
@@ -99,7 +110,12 @@ export function AppShellSidebar() {
       <SidebarFooter className="border-t border-sidebar-border gap-2 p-2">
         <form action={signOut} className="w-full">
           {isSupabaseConfigured() && (
-            <Button type="submit" size="sm" variant="outline" className="w-full justify-end gap-2">
+            <Button
+              type="submit"
+              size="default"
+              variant="outline"
+              className="min-h-11 w-full touch-manipulation justify-end gap-2"
+            >
               <span>خروج</span>
               <LogOut className="size-3.5" />
             </Button>

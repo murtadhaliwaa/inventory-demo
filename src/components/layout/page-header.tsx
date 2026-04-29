@@ -24,7 +24,11 @@ export function PageHeader({ title, description, className, children }: PageHead
           <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed sm:text-base">{description}</p>
         ) : null}
       </div>
-      {children ? <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">{children}</div> : null}
+      {children ? (
+        <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+          {children}
+        </div>
+      ) : null}
     </div>
   )
 }

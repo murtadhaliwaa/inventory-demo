@@ -16,10 +16,10 @@ export default function WmsLayout({ children }: { children: React.ReactNode }) {
       <AppShellSidebar />
       <SidebarInset>
         <header
-          className="border-border/60 bg-card/75 supports-[backdrop-filter]:bg-card/60 sticky top-0 z-20 flex h-14 min-w-0 shrink-0 items-center justify-between gap-3 border-b px-3 shadow-[var(--wms-surface-elevated)] backdrop-blur-md sm:px-4"
+          className="border-border/60 bg-card/75 supports-[backdrop-filter]:bg-card/60 sticky top-0 z-20 flex min-h-14 min-w-0 shrink-0 items-center justify-between gap-2 border-b px-3 py-2 shadow-[var(--wms-surface-elevated)] backdrop-blur-md sm:gap-3 sm:px-4 sm:py-0"
         >
           <div className="flex min-w-0 items-center gap-2">
-            <SidebarTrigger className="shrink-0" />
+            <SidebarTrigger className="shrink-0 touch-manipulation" />
             <Separator orientation="vertical" className="h-5" />
             <div className="flex min-w-0 flex-col gap-0 sm:flex-row sm:items-center sm:gap-2">
               <span className="bg-primary/15 text-primary ring-primary/25 inline-flex size-8 shrink-0 items-center justify-center rounded-lg ring-1">
@@ -30,10 +30,12 @@ export default function WmsLayout({ children }: { children: React.ReactNode }) {
               </h1>
             </div>
           </div>
-          <ThemeSwitcher variant="toolbar" />
+          <ThemeSwitcher variant="toolbar" className="touch-manipulation" />
         </header>
         <div className="wms-content-shell min-w-0 flex-1">
-          <div className="mx-auto w-full max-w-[90rem] px-3 py-6 sm:px-6 sm:py-8">{children}</div>
+          <div className="mx-auto w-full max-w-[90rem] px-3 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] sm:px-6 sm:py-8 sm:pb-8">
+            {children}
+          </div>
         </div>
       </SidebarInset>
       <RealtimeRefresh />

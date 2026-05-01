@@ -2,9 +2,7 @@
 
 import { useEffect } from "react"
 import {
-  Factory,
   LayoutGrid,
-  ListTree,
   LogOut,
   Package,
   ScrollText,
@@ -12,12 +10,12 @@ import {
   Truck,
   X,
 } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { isSupabaseConfigured } from "@/lib/env"
 import { signOut } from "@/app/login/actions"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
 import {
   Sidebar,
   SidebarContent,
@@ -58,14 +56,21 @@ export function AppShellSidebar() {
       <SidebarHeader className="border-b border-sidebar-border/90 bg-sidebar/50 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))] backdrop-blur-[2px]">
         <div className="flex w-full flex-1 items-start justify-between gap-2 overflow-hidden text-right text-sm font-semibold leading-tight text-sidebar-foreground group-data-[collapsible=icon]:px-0">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden pr-0.5">
-            <div className="bg-sidebar-primary/20 ring-sidebar-primary/15 flex size-9 shrink-0 items-center justify-center rounded-xl ring-1">
-              <Factory className="text-sidebar-primary size-4" />
+            <div className="relative size-9 shrink-0 overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-sidebar-border/80 sm:size-10 sm:rounded-xl group-data-[collapsible=icon]:size-8">
+              <Image
+                src="/company-logo.png"
+                alt="معمل الاتحاد"
+                fill
+                className="object-contain p-1 group-data-[collapsible=icon]:p-0.5"
+                sizes="(max-width: 640px) 36px, 40px"
+                priority
+              />
             </div>
             <span className="min-w-0 break-words">
-              المهند
+              معمل الاتحاد
               <br />
               <span className="text-[11px] font-medium text-sidebar-foreground/60">
-                AL-MUHANAD
+                AL-ETIHAD FACTORY
               </span>
             </span>
           </div>
@@ -85,7 +90,7 @@ export function AppShellSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs">القائمة</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-end text-xs">القائمة</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map(({ href, label, icon: Icon }) => {
@@ -98,24 +103,27 @@ export function AppShellSidebar() {
                       size="lg"
                       isActive={active}
                       className={cn(
-                        "touch-manipulation justify-end rounded-xl py-3 transition-[background-color,box-shadow,border-color] group-data-[collapsible=icon]:py-2!",
+                        "touch-manipulation justify-start rounded-xl py-3 transition-[background-color,box-shadow,border-color] group-data-[collapsible=icon]:py-2!",
                         active && "shadow-[var(--wms-surface-elevated)]"
                       )}
                     >
                       <Link
                         href={href}
                         prefetch
+                        aria-label={label}
                         onClick={() => {
                           if (isMobile) setOpenMobile(false)
                         }}
                         className={cn(
-                          "flex min-h-10 w-full items-center justify-end gap-2 rounded-xl py-1 !text-start sm:min-h-0",
+                          "flex min-h-10 w-full min-w-0 flex-row items-center justify-start gap-2 rounded-xl py-1 text-start sm:min-h-0",
                           active &&
                             "border-s-2 border-primary bg-sidebar-accent/90 text-sidebar-accent-foreground"
                         )}
                       >
-                        {label}
-                        <Icon className="size-4" />
+                        <Icon className="size-4 shrink-0" aria-hidden />
+                        <span className="min-w-0 flex-1 truncate group-data-[collapsible=icon]:sr-only">
+                          {label}
+                        </span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -124,14 +132,6 @@ export function AppShellSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <div className="px-2">
-          <Separator className="my-2" />
-          <p className="text-[11px] text-muted-foreground/90 text-right">
-            <ListTree className="mb-0.5 inline size-3 opacity-50" />
-            <br />
-            طن · كيلو · قطعة — وتتبع الموردين
-          </p>
-        </div>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border gap-2 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]">
         <form action={signOut} className="w-full">
@@ -140,10 +140,10 @@ export function AppShellSidebar() {
               type="submit"
               size="default"
               variant="outline"
-              className="min-h-11 w-full touch-manipulation justify-end gap-2"
+              className="min-h-11 w-full touch-manipulation justify-start gap-2"
             >
+              <LogOut className="size-3.5 shrink-0" aria-hidden />
               <span>خروج</span>
-              <LogOut className="size-3.5" />
             </Button>
           )}
         </form>

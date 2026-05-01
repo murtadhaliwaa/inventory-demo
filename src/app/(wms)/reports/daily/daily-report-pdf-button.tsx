@@ -22,7 +22,7 @@ const C = {
 
 function asciiPdfFileName(dateLabel: string) {
   const digits = dateLabel.replace(/[^\d]/g, "").slice(0, 14)
-  return `muhanad-wms-daily-${digits || Date.now()}.pdf`
+  return `etihad-wms-daily-${digits || Date.now()}.pdf`
 }
 
 type ExportDailyPdfButtonProps =
@@ -183,7 +183,7 @@ export function ExportDailyPdfButton(props: ExportDailyPdfButtonProps) {
 
       <div ref={ref} style={wrap} dir="rtl" aria-hidden>
         <div style={headerRule}>
-          <h1 style={h1}>شركة المهند — تقرير مخزون يومي</h1>
+          <h1 style={h1}>معمل الاتحاد — تقرير مخزون يومي</h1>
           <p style={dateLine}>{payload?.dateLabel ?? "…"}</p>
         </div>
 

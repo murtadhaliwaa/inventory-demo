@@ -4,7 +4,7 @@ import { DashboardKpiGrids } from "@/components/dashboard/kpi-grids"
 import { LowStockPanel } from "@/components/dashboard/low-stock-panel"
 import { RecentMovementsPanel } from "@/components/dashboard/recent-movements-panel"
 
-/** لوحة المهند: حركات اليوم، تنبيهات النقص، أحدث الحركات */
+/** لوحة معمل الاتحاد: حركات اليوم، تنبيهات النقص، أحدث الحركات */
 export default async function DashboardPage() {
   const data = await getDashboardData()
 
@@ -12,7 +12,7 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       <PageHeader
         title="لوحة التحكم"
-        description="شركة المهند — نظام إدارة المخازن (WMS): حركات اليوم، تنبيهات النقص، وأحدث السجلات."
+        description="معمل الاتحاد — نظام إدارة المخازن: حركات اليوم، تنبيهات النقص، وأحدث السجلات."
       />
 
       <DashboardKpiGrids data={data} />

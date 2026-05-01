@@ -104,8 +104,9 @@ function CreateForm({ onClose }: { onClose: () => void }) {
   )
 }
 
-export function CreateItemButton() {
+export function CreateItemButton({ canManage = true }: { canManage?: boolean }) {
   const [open, set] = useState(false)
+  if (!canManage) return null
   return (
     <Dialog open={open} onOpenChange={set}>
       <DialogTrigger asChild>
@@ -209,8 +210,9 @@ function EditForm({ item, onClose }: { item: ItemForClient; onClose: () => void 
   )
 }
 
-export function EditItemButton({ item }: { item: ItemForClient }) {
+export function EditItemButton({ item, canManage = true }: { item: ItemForClient; canManage?: boolean }) {
   const [open, set] = useState(false)
+  if (!canManage) return null
   return (
     <Dialog open={open} onOpenChange={set}>
       <DialogTrigger asChild>
@@ -234,16 +236,16 @@ export function EditItemButton({ item }: { item: ItemForClient }) {
 export function DeleteItemButton({
   itemId,
   nameDisplay,
-  canDelete = true,
+  canManage = true,
 }: {
   itemId: string
   nameDisplay: string
-  canDelete?: boolean
+  canManage?: boolean
 }) {
   const router = useRouter()
   const [open, set] = useState(false)
   const [p, t] = useTransition()
-  if (!canDelete) return null
+  if (!canManage) return null
   return (
     <AlertDialog open={open} onOpenChange={set}>
       <Button

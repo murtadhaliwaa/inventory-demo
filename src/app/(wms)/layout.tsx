@@ -1,3 +1,4 @@
+import Image from "next/image"
 import { AppShellSidebar } from "@/components/layout/app-shell-sidebar"
 import { ThemeSwitcher } from "@/components/layout/theme-switcher"
 import { RealtimeRefresh } from "@/components/inventory/realtime-refresh"
@@ -21,19 +22,25 @@ export default function WmsLayout({ children }: { children: React.ReactNode }) {
           <div className="flex min-w-0 items-center gap-2">
             <SidebarTrigger className="shrink-0 touch-manipulation" />
             <Separator orientation="vertical" className="h-5" />
-            <div className="flex min-w-0 flex-col gap-0 sm:flex-row sm:items-center sm:gap-2">
-              <span className="bg-primary/15 text-primary ring-primary/25 inline-flex size-8 shrink-0 items-center justify-center rounded-lg ring-1">
-                <span className="text-xs font-black tracking-tighter">م</span>
+            <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+              <span className="relative inline-flex size-8 shrink-0 overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-border/70 sm:size-9 sm:rounded-xl">
+                <Image
+                  src="/company-logo.png"
+                  alt=""
+                  fill
+                  className="object-contain p-0.5 sm:p-1"
+                  sizes="(max-width: 640px) 32px, 36px"
+                />
               </span>
-              <h1 className="truncate text-sm font-semibold tracking-tight text-foreground sm:text-base">
-                نظام المهند — إدارة المخازن
+              <h1 className="line-clamp-2 min-w-0 text-xs font-semibold leading-snug tracking-tight text-foreground sm:line-clamp-1 sm:truncate sm:text-sm md:text-base">
+                معمل الاتحاد — إدارة المخازن
               </h1>
             </div>
           </div>
           <ThemeSwitcher variant="toolbar" className="touch-manipulation" />
         </header>
         <div className="wms-content-shell min-w-0 flex-1">
-          <div className="mx-auto w-full max-w-[90rem] px-3 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] sm:px-6 sm:py-8 sm:pb-8">
+          <div className="mx-auto w-full max-w-[90rem] px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] sm:px-6 sm:py-8 sm:pb-8">
             {children}
           </div>
         </div>

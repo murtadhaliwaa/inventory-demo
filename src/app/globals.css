@@ -3,7 +3,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * AL-MUHANAD WMS — تصميم موحّد
+ * معمل الاتحاد — تصميم موحّد
  * - الثيم: class على <html> عبر next-themes (.dark للوضع الليلي)
  * - الألوان: HSL فقط حتى تبقى متوافقة مع html2canvas وأدوات أخرى
  */
@@ -113,8 +113,8 @@
 }
 
 html {
-  /* تثبيت الرأس + تمرير سلس عند الانتقال لعناصر داخل الصفحة */
-  scroll-padding-top: 4.5rem;
+  /* تثبيت الرأس + تمرير سلس؛ على الجوال قد يزداد ارتفاع الترويسة سطرين */
+  scroll-padding-top: max(4.5rem, env(safe-area-inset-top, 0px));
 }
 
 body {
@@ -226,11 +226,47 @@ body {
   @apply bg-card/90;
 }
 
+/* زر تبديل النهاري / الليلي — حركة خفيفة عند كل ضغطة */
+@keyframes wms-theme-icon-pop {
+  0% {
+    transform: scale(0.45) rotate(-95deg);
+    opacity: 0.2;
+  }
+  58% {
+    transform: scale(1.08) rotate(8deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.wms-theme-toggle-burst {
+  animation: wms-theme-icon-pop 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* انتقال ناعم بين جذري الصفحة عند دعم View Transitions */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.32s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .wms-theme-toggle-burst {
+    animation: none !important;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.01ms !important;
   }
 }

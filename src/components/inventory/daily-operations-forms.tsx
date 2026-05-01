@@ -17,13 +17,17 @@ import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
 import { PackagePlus, PackageMinus } from "lucide-react"
 
-type Props = {
+type ItemsSuppliersProps = {
   items: ItemForClient[]
   suppliers: SupplierForClient[]
 }
 
+type Props = ItemsSuppliersProps & {
+  canManage: boolean
+}
+
 /** نموذجا إضافة (مع مورد) وسحب — تحديث فوري للمخزون عبر Server Actions */
-export function DailyOperationsForms({ items, suppliers }: Props) {
+export function DailyOperationsForms({ canManage, items, suppliers }: Props) {
   if (items.length === 0) {
     return (
       <Card className="rounded-2xl border-dashed border-border/70 shadow-[var(--wms-surface-elevated)]">
@@ -36,15 +40,28 @@ export function DailyOperationsForms({ items, suppliers }: Props) {
       </Card>
     )
   }
+  const readOnly = !canManage
+
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <AddMaterialsForm items={items} suppliers={suppliers} />
-      <WithdrawMaterialsForm items={items} />
+    <div className="space-y-4">
+      {readOnly ? (
+        <div
+          className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-right text-sm leading-relaxed text-foreground dark:border-amber-400/35 dark:bg-amber-400/10"
+          role="status"
+        >
+          <span className="font-semibold">عرض فقط:</span> ترى نماذج الإضافة والسحب كما يظهران للمشرف، دون إمكانية الإرسال. الإضافة والتعديل والحذف
+          للمشرفين فقط.
+        </div>
+      ) : null}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <AddMaterialsForm items={items} readOnly={readOnly} suppliers={suppliers} />
+        <WithdrawMaterialsForm items={items} readOnly={readOnly} />
+      </div>
     </div>
   )
 }
 
-function AddMaterialsForm({ items, suppliers }: Props) {
+function AddMaterialsForm({ items, suppliers, readOnly = false }: ItemsSuppliersProps & { readOnly?: boolean }) {
   const router = useRouter()
   const [p, t] = useTransition()
   const [itemId, setItemId] = useState(() => items[0]?.id ?? "")
@@ -64,10 +81,12 @@ function AddMaterialsForm({ items, suppliers }: Props) {
         <CardDescription>اختر التاجر من القائمة أو أدخل تاجراً جديداً مع الكمية</CardDescription>
       </CardHeader>
       <CardContent>
+        <fieldset disabled={readOnly} className="min-w-0 space-y-4 border-0 p-0">
         <form
           className="space-y-4 text-right"
           onSubmit={(e) => {
             e.preventDefault()
+            if (readOnly) return
             const fd = new FormData(e.currentTarget)
             const raw = {
               itemId: itemId || (fd.get("itemId") as string),
@@ -204,16 +223,17 @@ function AddMaterialsForm({ items, suppliers }: Props) {
             <Textarea id={`${idBase}-note`} name="note" rows={2} className="resize-none" />
           </div>
 
-          <Button type="submit" className="w-full sm:w-auto" disabled={p}>
-            {p ? "جاري الحفظ…" : "تسجيل الإضافة"}
+          <Button type="submit" className="w-full sm:w-auto" disabled={p || readOnly}>
+            {readOnly ? "عرض فقط" : p ? "جاري الحفظ…" : "تسجيل الإضافة"}
           </Button>
         </form>
+        </fieldset>
       </CardContent>
     </Card>
   )
 }
 
-function WithdrawMaterialsForm({ items }: { items: ItemForClient[] }) {
+function WithdrawMaterialsForm({ items, readOnly = false }: { items: ItemForClient[]; readOnly?: boolean }) {
   const router = useRouter()
   const [p, t] = useTransition()
   const [itemId, setItemId] = useState(() => items[0]?.id ?? "")
@@ -229,10 +249,12 @@ function WithdrawMaterialsForm({ items }: { items: ItemForClient[] }) {
         <CardDescription>تسجيل صرف يومي وتحديث الرصيد فوراً</CardDescription>
       </CardHeader>
       <CardContent>
+        <fieldset disabled={readOnly} className="min-w-0 space-y-4 border-0 p-0">
         <form
           className="space-y-4 text-right"
           onSubmit={(e) => {
             e.preventDefault()
+            if (readOnly) return
             const fd = new FormData(e.currentTarget)
             const raw = {
               itemId: itemId || (fd.get("itemId") as string),
@@ -296,10 +318,11 @@ function WithdrawMaterialsForm({ items }: { items: ItemForClient[] }) {
             <Textarea id={`${idBase}-wnote`} name="note" rows={2} className="resize-none" />
           </div>
 
-          <Button type="submit" variant="destructive" className="w-full sm:w-auto" disabled={p}>
-            {p ? "جاري الحفظ…" : "تسجيل السحب"}
+          <Button type="submit" variant="destructive" className="w-full sm:w-auto" disabled={p || readOnly}>
+            {readOnly ? "عرض فقط" : p ? "جاري الحفظ…" : "تسجيل السحب"}
           </Button>
         </form>
+        </fieldset>
       </CardContent>
     </Card>
   )

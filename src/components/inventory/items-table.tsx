@@ -21,11 +21,11 @@ const pageSize = 8
 
 export function ItemsDataTable({
   items: src,
-  canDelete = true,
+  canManage = true,
   serverPagination,
 }: {
   items: ItemForClient[]
-  canDelete?: boolean
+  canManage?: boolean
   serverPagination?: { page: number; totalPages: number; total: number; pageSize: number }
 }) {
   const [q, setQ] = useState("")
@@ -39,8 +39,8 @@ export function ItemsDataTable({
     })
   }, [src, q, unitFilter])
 
-  const columns: ColumnDef<ItemForClient>[] = useMemo(
-    () => [
+  const columns: ColumnDef<ItemForClient>[] = useMemo(() => {
+    const base: ColumnDef<ItemForClient>[] = [
       { accessorKey: "name", header: "الاسم" },
       {
         accessorKey: "unit",
@@ -78,23 +78,26 @@ export function ItemsDataTable({
           )
         },
       },
+    ]
+    if (!canManage) return base
+    return [
+      ...base,
       {
         id: "ops",
         header: "إدارة",
         cell: (ctx) => {
           const r = ctx.row.original
           return (
-            <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:justify-end">
-              <EditItemButton item={r} />
-              <DeleteItemButton nameDisplay={r.name} itemId={r.id} canDelete={canDelete} />
+            <div className="flex flex-row items-center justify-center gap-1.5">
+              <EditItemButton item={r} canManage={canManage} />
+              <DeleteItemButton nameDisplay={r.name} itemId={r.id} canManage={canManage} />
             </div>
           )
         },
         enableHiding: false,
       },
-    ],
-    [canDelete]
-  )
+    ]
+  }, [canManage])
 
   const table = useReactTable({
     data: rows,
@@ -146,7 +149,7 @@ export function ItemsDataTable({
               العمليات اليومية
             </Link>
           </Button>
-          <CreateItemButton />
+          {canManage ? <CreateItemButton /> : null}
         </div>
       </div>
       <div className="wms-panel overflow-x-auto overflow-y-visible p-0">
@@ -156,11 +159,12 @@ export function ItemsDataTable({
               <TableRow key={hg.id}>
                 {hg.headers.map((h) => {
                   const id = h.column.id
-                  const end = id === "bal" || id === "safety" || id === "ops"
+                  const headAlign =
+                    id === "ops" ? "text-center" : id === "bal" || id === "safety" ? "text-end" : "text-start"
                   return (
                     <TableHead
                       key={h.id}
-                      className={cn("text-xs font-medium", end ? "text-end" : "text-start")}
+                      className={cn("text-xs font-medium", headAlign)}
                     >
                       {h.isPlaceholder
                         ? null
@@ -177,13 +181,14 @@ export function ItemsDataTable({
                 <TableRow key={r.id} data-state={r.getIsSelected() && "selected"}>
                   {r.getVisibleCells().map((c) => {
                     const id = c.column.id
-                    const end = id === "bal" || id === "safety" || id === "ops"
+                    const cellAlign =
+                      id === "ops" ? "text-center" : id === "bal" || id === "safety" ? "text-end" : "text-start"
                     return (
                       <TableCell
                         key={c.id}
                         className={cn(
                           "align-top text-sm",
-                          end ? "text-end" : "text-start"
+                          cellAlign
                         )}
                       >
                         {flexRender(c.column.columnDef.cell, c.getContext())}

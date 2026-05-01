@@ -1,4 +1,4 @@
-// نظام المهند للمخازن (AL-MUHANAD WMS) — PostgreSQL / Supabase
+// نظام مخازن معمل الاتحاد (AL-ETIHAD FACTORY WMS) — PostgreSQL / Supabase
 // الحقول العددية: Decimal(18,4) للكميات الدقيقة
 
 generator client {

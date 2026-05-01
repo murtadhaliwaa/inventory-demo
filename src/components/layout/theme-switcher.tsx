@@ -1,29 +1,28 @@
 "use client"
 
-import { Check, Monitor, Moon, Sun } from "lucide-react"
+import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-
-const OPTIONS = [
-  { value: "system", label: "مطابق لجهازك", hint: "تلقائي", Icon: Monitor },
-  { value: "light", label: "نهاري", hint: "فاتح", Icon: Sun },
-  { value: "dark", label: "ليلي", hint: "داكن", Icon: Moon },
-] as const
 
 type Variant = "toolbar" | "sidebar"
 
+function runWithViewTransition(fn: () => void) {
+  const d = document as Document & {
+    startViewTransition?: (callback: () => void) => void
+  }
+  if (typeof d.startViewTransition === "function") {
+    d.startViewTransition(() => {
+      fn()
+    })
+  } else {
+    fn()
+  }
+}
+
 /**
- * اختيار المظهر (نهاري / ليلي / مطابق للجهاز) — يُستخدم في الرأس وصفحة الدخول.
+ * تبديل المظهر نهاري ↔ ليلي بضغطة واحدة، مع حركة للأيقونة ودعم View Transitions عند توفره.
  */
 export function ThemeSwitcher({
   variant = "toolbar",
@@ -32,20 +31,23 @@ export function ThemeSwitcher({
   variant?: Variant
   className?: string
 }) {
-  const { theme, setTheme, resolvedTheme } = useTheme()
+  const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const [burst, setBurst] = useState(0)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  const active = theme ?? "system"
-  const CurrentIcon =
-    active === "system"
-      ? Monitor
-      : resolvedTheme === "dark"
-        ? Moon
-        : Sun
+  const isDark = resolvedTheme === "dark"
+
+  const toggle = useCallback(() => {
+    const next = isDark ? "light" : "dark"
+    runWithViewTransition(() => {
+      setTheme(next)
+      setBurst((n) => n + 1)
+    })
+  }, [isDark, setTheme])
 
   if (!mounted) {
     return (
@@ -65,52 +67,30 @@ export function ThemeSwitcher({
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant={variant === "sidebar" ? "ghost" : "outline"}
-          size={variant === "toolbar" ? "icon" : "icon-sm"}
-          className={cn(
-            "rounded-full shrink-0 border-sidebar-border/80",
-            variant === "toolbar" && "h-10 w-10 min-h-10 min-w-10 sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9",
-            variant === "sidebar" && "border border-transparent hover:bg-sidebar-accent",
-            className
-          )}
-          aria-label="المظهر: نهاري أو ليلي أو مطابق للجهاز"
-          aria-haspopup="menu"
-        >
-          <CurrentIcon className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={6} className="min-w-[13rem] p-0">
-        <div dir="rtl" className="p-1">
-          <DropdownMenuLabel className="text-muted-foreground px-2 py-1.5 text-xs font-normal">
-            المظهر
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {OPTIONS.map(({ value, label, hint, Icon }) => (
-            <DropdownMenuItem
-              key={value}
-              className="flex cursor-pointer flex-row-reverse items-center justify-between gap-2 py-2"
-              onClick={() => setTheme(value)}
-            >
-              <span className="flex min-w-0 flex-1 items-center gap-2 text-right">
-                <Icon className="text-muted-foreground size-4 shrink-0" aria-hidden />
-                <span className="flex min-w-0 flex-col gap-0 leading-tight">
-                  <span className="font-medium">{label}</span>
-                  <span className="text-muted-foreground text-[11px]">{hint}</span>
-                </span>
-              </span>
-              {active === value ? (
-                <Check className="text-primary size-4 shrink-0" aria-hidden />
-              ) : (
-                <span className="size-4 shrink-0" aria-hidden />
-              )}
-            </DropdownMenuItem>
-          ))}
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Button
+      type="button"
+      variant={variant === "sidebar" ? "ghost" : "outline"}
+      size={variant === "toolbar" ? "icon" : "icon-sm"}
+      onClick={toggle}
+      className={cn(
+        "relative shrink-0 overflow-hidden rounded-full border-sidebar-border/80 transition-[transform,box-shadow] duration-200 ease-out active:scale-[0.94] motion-safe:active:scale-[0.92]",
+        variant === "toolbar" &&
+          "h-10 w-10 min-h-10 min-w-10 shadow-sm hover:shadow-md sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9",
+        variant === "sidebar" && "border border-transparent hover:bg-sidebar-accent",
+        className
+      )}
+      aria-label={isDark ? "التبديل إلى المظهر النهاري" : "التبديل إلى المظهر الليلي"}
+    >
+      <span
+        key={burst}
+        className={cn(
+          "pointer-events-none flex size-full items-center justify-center",
+          burst > 0 && "wms-theme-toggle-burst"
+        )}
+        aria-hidden
+      >
+        {isDark ? <Moon className="size-4" strokeWidth={2} /> : <Sun className="size-4" strokeWidth={2} />}
+      </span>
+    </Button>
   )
 }

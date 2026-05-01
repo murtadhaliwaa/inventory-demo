@@ -19,9 +19,11 @@ export function PageHeader({ title, description, className, children }: PageHead
     >
       <div className="min-w-0 space-y-1.5 text-right">
         <div className="wms-page-accent-line" aria-hidden />
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{title}</h1>
+        <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl md:text-3xl">{title}</h1>
         {description ? (
-          <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed sm:text-base">{description}</p>
+          <p className="text-muted-foreground max-w-2xl text-xs leading-relaxed sm:text-sm md:text-base">
+            {description}
+          </p>
         ) : null}
       </div>
       {children ? (

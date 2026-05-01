@@ -39,32 +39,34 @@ import { Pencil, Plus, Trash2 } from "lucide-react"
 
 type Props = {
   suppliers: SupplierForClient[]
-  canDelete: boolean
+  canManage: boolean
 }
 
-export function SuppliersDataTable({ suppliers, canDelete }: Props) {
+export function SuppliersDataTable({ suppliers, canManage }: Props) {
   const router = useRouter()
 
   if (suppliers.length === 0) {
     return (
       <div className="space-y-6">
-        <EmptySuppliers onCreated={() => router.refresh()} />
+        <EmptySuppliers canManage={canManage} onCreated={() => router.refresh()} />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <CreateSupplierDialog onCreated={() => router.refresh()} />
-      </div>
+      {canManage ? (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <CreateSupplierDialog onCreated={() => router.refresh()} />
+        </div>
+      ) : null}
       <div className="wms-panel overflow-x-auto rounded-xl border border-border/60 p-0 shadow-[var(--wms-surface-elevated)]">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="text-start">المورد</TableHead>
-              <TableHead className="text-start">الجوال</TableHead>
-              <TableHead className="text-end">إدارة</TableHead>
+              <TableHead className="text-center">الجوال</TableHead>
+              {canManage ? <TableHead className="text-center">إدارة</TableHead> : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -73,17 +75,19 @@ export function SuppliersDataTable({ suppliers, canDelete }: Props) {
                 <TableCell className="max-w-[12rem] text-start font-medium" title={s.name}>
                   {s.name}
                 </TableCell>
-                <TableCell className="text-start font-mono text-sm text-muted-foreground" dir="ltr">
-                  {s.phone ?? "—"}
+                <TableCell className="text-center font-mono text-sm text-muted-foreground">
+                  <span dir="ltr" className="inline-block">
+                    {s.phone ?? "—"}
+                  </span>
                 </TableCell>
-                <TableCell className="text-end">
-                  <div className="flex justify-end gap-1.5">
-                    <EditSupplierDialog supplier={s} onSaved={() => router.refresh()} />
-                    {canDelete ? (
+                {canManage ? (
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <EditSupplierDialog supplier={s} onSaved={() => router.refresh()} />
                       <DeleteSupplierButton supplier={s} onDone={() => router.refresh()} />
-                    ) : null}
-                  </div>
-                </TableCell>
+                    </div>
+                  </TableCell>
+                ) : null}
               </TableRow>
             ))}
           </TableBody>
@@ -93,11 +97,15 @@ export function SuppliersDataTable({ suppliers, canDelete }: Props) {
   )
 }
 
-function EmptySuppliers({ onCreated }: { onCreated: () => void }) {
+function EmptySuppliers({ canManage, onCreated }: { canManage: boolean; onCreated: () => void }) {
   return (
     <div className="rounded-2xl border border-dashed border-border/80 bg-muted/10 p-8 text-center shadow-[var(--wms-surface-elevated)]">
-      <p className="text-muted-foreground mb-4 text-sm">لا موردين بعد. أضف أول مورد للظهور في العمليات والتقارير.</p>
-      <CreateSupplierDialog onCreated={onCreated} />
+      <p className="text-muted-foreground mb-4 text-sm">
+        {canManage
+          ? "لا موردين بعد. أضف أول مورد للظهور في العمليات والتقارير."
+          : "لا موردين مسجّلين. ليس لديك صلاحية إضافة موردين من هذا الحساب."}
+      </p>
+      {canManage ? <CreateSupplierDialog onCreated={onCreated} /> : null}
     </div>
   )
 }

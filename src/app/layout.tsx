@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Baloo_Bhaijaan_2, Geist_Mono } from "next/font/google"
 import { AppProviders } from "@/components/providers/app-providers"
 import "./globals.css"
@@ -17,8 +17,15 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "نظام المهند | إدارة المخازن",
-  description: "WMS — شركة المهند، مواد خش ومنتجات نهائية",
+  title: "معمل الاتحاد | نظام إدارة المخازن",
+  description: "معمل الاتحاد — مواد خام ومنتجات نهائية (بلاستيك وأنابيب)",
+}
+
+/** شاشات آمنة + مقياس مناسب للجوال (الشقوق والهوم انديكاتور) */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 }
 
 /**

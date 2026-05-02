@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache"
 import type { Item } from "@/generated/prisma"
 import { Prisma, TransactionType } from "@/generated/prisma"
 import { requireUser } from "@/lib/auth/require-user"
-import { isInventoryAdmin } from "@/lib/auth/roles"
 import { db } from "@/lib/db"
 import { formatDecimalQuantity } from "@/lib/format"
 import type { DailyPdfPayload } from "@/lib/daily-report-pdf-types"
@@ -31,12 +30,6 @@ function dec(n: number | string) {
 }
 
 type ActionResult = { success: true } | { success: false; error: string }
-
-const INVENTORY_MUTATION_FORBIDDEN = {
-  success: false,
-  error:
-    "لا صلاحية إضافة أو تعديل أو حذف. حسابك للعرض فقط. يفعّل المشرف الصلاحية من Supabase (App metadata للمستخدم: wms_admin = true).",
-} satisfies ActionResult
 
 const DEFAULT_PAGE_SIZE = 50
 const MAX_PAGE_SIZE = 100
@@ -122,8 +115,7 @@ export async function getOperationsPageData() {
 
 export async function createSupplier(f: FormData | Record<string, unknown>) {
   try {
-    const user = await requireUser()
-    if (!isInventoryAdmin(user)) return INVENTORY_MUTATION_FORBIDDEN
+    await requireUser()
     const data = f instanceof FormData ? Object.fromEntries(f.entries()) : f
     const parsed = supplierCreateSchema.safeParse(data)
     if (!parsed.success) {
@@ -146,8 +138,7 @@ export async function createSupplier(f: FormData | Record<string, unknown>) {
 
 export async function updateSupplier(f: FormData | Record<string, unknown>) {
   try {
-    const user = await requireUser()
-    if (!isInventoryAdmin(user)) return INVENTORY_MUTATION_FORBIDDEN
+    await requireUser()
     const data = f instanceof FormData ? Object.fromEntries(f.entries()) : f
     const parsed = supplierUpdateSchema.safeParse(data)
     if (!parsed.success) {
@@ -171,8 +162,7 @@ export async function updateSupplier(f: FormData | Record<string, unknown>) {
 
 export async function deleteSupplier(f: FormData | Record<string, unknown>) {
   try {
-    const user = await requireUser()
-    if (!isInventoryAdmin(user)) return INVENTORY_MUTATION_FORBIDDEN
+    await requireUser()
     const data = f instanceof FormData ? Object.fromEntries(f.entries()) : f
     const parsed = supplierDeleteSchema.safeParse(data)
     if (!parsed.success) {
@@ -189,8 +179,7 @@ export async function deleteSupplier(f: FormData | Record<string, unknown>) {
 
 export async function createItem(f: FormData | Record<string, unknown>) {
   try {
-    const user = await requireUser()
-    if (!isInventoryAdmin(user)) return INVENTORY_MUTATION_FORBIDDEN
+    await requireUser()
     const data =
       f instanceof FormData
         ? Object.fromEntries(f.entries())
@@ -233,8 +222,7 @@ export async function createItem(f: FormData | Record<string, unknown>) {
 
 export async function updateItem(f: FormData | Record<string, unknown>) {
   try {
-    const user = await requireUser()
-    if (!isInventoryAdmin(user)) return INVENTORY_MUTATION_FORBIDDEN
+    await requireUser()
     const data = f instanceof FormData ? Object.fromEntries(f.entries()) : f
     const parsed = itemUpdateSchema.safeParse(data)
     if (!parsed.success) {
@@ -259,8 +247,7 @@ export async function updateItem(f: FormData | Record<string, unknown>) {
 
 export async function deleteItem(f: FormData | Record<string, unknown>) {
   try {
-    const user = await requireUser()
-    if (!isInventoryAdmin(user)) return INVENTORY_MUTATION_FORBIDDEN
+    await requireUser()
     const data = f instanceof FormData ? Object.fromEntries(f.entries()) : f
     const parsed = itemDeleteSchema.safeParse(data)
     if (!parsed.success) {
@@ -289,8 +276,7 @@ export async function recordTransactionAdd(
   f: FormData | Record<string, unknown>
 ) {
   try {
-    const user = await requireUser()
-    if (!isInventoryAdmin(user)) return INVENTORY_MUTATION_FORBIDDEN
+    await requireUser()
     const data = f instanceof FormData ? Object.fromEntries(f.entries()) : f
     const parsed = transactionAddSchema.safeParse({
       ...data,
@@ -357,8 +343,7 @@ export async function recordTransactionWithdraw(
   f: FormData | Record<string, unknown>
 ) {
   try {
-    const user = await requireUser()
-    if (!isInventoryAdmin(user)) return INVENTORY_MUTATION_FORBIDDEN
+    await requireUser()
     const data = f instanceof FormData ? Object.fromEntries(f.entries()) : f
     const parsed = transactionWithdrawSchema.safeParse({
       ...data,

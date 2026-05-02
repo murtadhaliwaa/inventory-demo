@@ -121,11 +121,12 @@ export async function createSupplier(f: FormData | Record<string, unknown>) {
     if (!parsed.success) {
       return { success: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" }
     }
-    const phone = parsed.data.phone?.trim()
+    const notes = parsed.data.notes?.trim()
     await db.supplier.create({
       data: {
         name: parsed.data.name.trim(),
-        phone: phone && phone.length > 0 ? phone : null,
+        countryCode: parsed.data.countryCode,
+        notes: notes && notes.length > 0 ? notes : null,
       },
     })
     revalidateApp()
@@ -144,12 +145,13 @@ export async function updateSupplier(f: FormData | Record<string, unknown>) {
     if (!parsed.success) {
       return { success: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" }
     }
-    const phone = parsed.data.phone?.trim()
+    const notes = parsed.data.notes?.trim()
     await db.supplier.update({
       where: { id: parsed.data.id },
       data: {
         name: parsed.data.name.trim(),
-        phone: phone && phone.length > 0 ? phone : null,
+        countryCode: parsed.data.countryCode,
+        notes: notes && notes.length > 0 ? notes : null,
       },
     })
     revalidateApp()
@@ -285,8 +287,15 @@ export async function recordTransactionAdd(
     if (!parsed.success) {
       return { success: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" }
     }
-    const { itemId, quantity, supplierId, newSupplierName, newSupplierPhone, note } =
-      parsed.data
+    const {
+      itemId,
+      quantity,
+      supplierId,
+      newSupplierName,
+      newSupplierCountryCode,
+      newSupplierNotes,
+      note,
+    } = parsed.data
     const q = dec(quantity)
     const noteValue = !note || note === "" ? null : note
 
@@ -294,11 +303,13 @@ export async function recordTransactionAdd(
       let resolvedSupplierId: string | null = null
       const newName = newSupplierName?.trim()
       if (newName) {
-        const phone = newSupplierPhone?.trim()
+        const code = newSupplierCountryCode!.trim()
+        const sn = newSupplierNotes?.trim()
         const s = await tx.supplier.create({
           data: {
             name: newName,
-            phone: phone && phone.length > 0 ? phone : null,
+            countryCode: code,
+            notes: sn && sn.length > 0 ? sn : null,
           },
         })
         resolvedSupplierId = s.id
@@ -423,7 +434,7 @@ export async function getDashboardData() {
         type: true,
         quantity: true,
         item: { select: { id: true, name: true, unit: true } },
-        supplier: { select: { id: true, name: true } },
+        supplier: { select: { id: true, name: true, countryCode: true } },
       },
     }),
     db.transaction.findMany({
@@ -466,7 +477,7 @@ const dailyTxSelect = {
   type: true,
   quantity: true,
   item: { select: { id: true, name: true, unit: true } },
-  supplier: { select: { id: true, name: true } },
+  supplier: { select: { id: true, name: true, countryCode: true } },
 } as const
 
 export async function getDailyReport(opts?: {
@@ -593,6 +604,7 @@ export async function getDailyReportPdfPayload(): Promise<DailyPdfPayload> {
     time: new Date(t.createdAt).toLocaleTimeString("ar-EG", { timeStyle: "short" }),
     itemName: t.item.name,
     supplierName: t.supplier?.name ?? "—",
+    supplierCountryCode: t.supplier?.countryCode ?? null,
     qtyUnit: `${formatDecimalQuantity(t.quantity)} ${itemUnitLabelFor(t.item.unit)}`,
   }))
   const withdraws = withdrawRows.map((t) => ({

@@ -55,10 +55,15 @@ async function main() {
         }
       }
 
+      const supplierSeeds = [
+        { name: supplierNames[0]!, countryCode: "SA" as const },
+        { name: supplierNames[1]!, countryCode: "AE" as const },
+        { name: supplierNames[2]!, countryCode: "CN" as const },
+      ]
       const suppliers = await Promise.all(
-        supplierNames.map((name) =>
+        supplierSeeds.map((row) =>
           tx.supplier.create({
-            data: { name, phone: null },
+            data: { name: row.name, countryCode: row.countryCode, notes: null },
           })
         )
       )

@@ -15,6 +15,7 @@ import {
 import { AlertTriangle } from "lucide-react"
 import { PageHeader } from "@/components/layout/page-header"
 import { DailyAllMovements } from "./report-tables"
+import { CountryFlag } from "@/components/inventory/country-flag"
 import { ExportDailyPdfButton } from "./daily-report-pdf-button"
 import { dailyMovementToClient } from "@/lib/serialize-inventory"
 import { Button } from "@/components/ui/button"
@@ -80,7 +81,16 @@ export default async function DailyReportPage({
                               {itemUnitLabelFor(t.item.unit)}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-start text-sm">{t.supplier?.name ?? "—"}</TableCell>
+                          <TableCell className="text-start text-sm">
+                            {t.supplier ? (
+                              <span className="inline-flex items-center gap-2">
+                                <CountryFlag code={t.supplier.countryCode} size={18} />
+                                <span className="min-w-0">{t.supplier.name}</span>
+                              </span>
+                            ) : (
+                              "—"
+                            )}
+                          </TableCell>
                           <TableCell className="text-end font-mono text-sm tabular-nums">
                             {formatDecimalQuantity(t.quantity)} {itemUnitLabelFor(t.item.unit)}
                           </TableCell>

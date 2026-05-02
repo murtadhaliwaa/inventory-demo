@@ -4,10 +4,15 @@ import { useId, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import type { SupplierForClient } from "@/lib/serialize-inventory"
 import { createSupplier, deleteSupplier, updateSupplier } from "@/lib/actions/inventory"
+import type { z } from "zod"
 import { supplierCreateSchema, supplierUpdateSchema } from "@/lib/validations/inventory"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { SupplierCountryCombobox } from "@/components/inventory/supplier-country-select"
+import { supplierCountryLabelAr } from "@/lib/supplier-country"
+import { CountryFlag } from "@/components/inventory/country-flag"
 import {
   Table,
   TableBody,
@@ -64,8 +69,9 @@ export function SuppliersDataTable({ suppliers, canManage }: Props) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="text-start">المورد</TableHead>
-              <TableHead className="text-center">الجوال</TableHead>
+              <TableHead className="text-start">التاجر</TableHead>
+              <TableHead className="text-start">الدولة</TableHead>
+              <TableHead className="text-start">ملاحظات</TableHead>
               {canManage ? <TableHead className="text-center">إدارة</TableHead> : null}
             </TableRow>
           </TableHeader>
@@ -75,10 +81,20 @@ export function SuppliersDataTable({ suppliers, canManage }: Props) {
                 <TableCell className="max-w-[12rem] text-start font-medium" title={s.name}>
                   {s.name}
                 </TableCell>
-                <TableCell className="text-center font-mono text-sm text-muted-foreground">
-                  <span dir="ltr" className="inline-block">
-                    {s.phone ?? "—"}
+                <TableCell className="text-start text-sm">
+                  <span
+                    className="inline-flex items-center gap-2 whitespace-nowrap"
+                    title={supplierCountryLabelAr(s.countryCode)}
+                  >
+                    <CountryFlag code={s.countryCode} size={20} />
+                    <span className="min-w-0">{supplierCountryLabelAr(s.countryCode)}</span>
                   </span>
+                </TableCell>
+                <TableCell
+                  className="max-w-[10rem] truncate text-start text-xs text-muted-foreground"
+                  title={s.notes ?? undefined}
+                >
+                  {s.notes?.trim() ? s.notes : "—"}
                 </TableCell>
                 {canManage ? (
                   <TableCell className="text-center">
@@ -123,7 +139,7 @@ function CreateSupplierDialog({ onCreated }: { onCreated: () => void }) {
       <DialogContent className="max-w-md" dir="rtl" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader className="text-right">
           <DialogTitle>إضافة مورد</DialogTitle>
-          <DialogDescription>الاسم مطلوب، الجوال اختياري.</DialogDescription>
+          <DialogDescription>اسم التاجر والدولة مطلوبان؛ الملاحظات اختيارية.</DialogDescription>
         </DialogHeader>
         <SupplierForm mode="create" onClose={() => setOpen(false)} onSuccess={onCreated} />
       </DialogContent>
@@ -156,6 +172,10 @@ function EditSupplierDialog({
   )
 }
 
+type PendingSupplierSave =
+  | { mode: "create"; data: z.infer<typeof supplierCreateSchema> }
+  | { mode: "edit"; data: z.infer<typeof supplierUpdateSchema> }
+
 function SupplierForm({
   mode,
   supplier,
@@ -169,7 +189,29 @@ function SupplierForm({
 }) {
   const [p, t] = useTransition()
   const idBase = useId()
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pending, setPending] = useState<PendingSupplierSave | null>(null)
+
+  function runSave(save: PendingSupplierSave) {
+    t(async () => {
+      const r =
+        save.mode === "create"
+          ? await createSupplier(save.data)
+          : await updateSupplier(save.data)
+      if (r.success) {
+        toast.success(save.mode === "create" ? "تمت إضافة المورد" : "تم التحديث")
+        onSuccess()
+        onClose()
+      } else {
+        toast.error("error" in r ? r.error : "فشل")
+      }
+      setConfirmOpen(false)
+      setPending(null)
+    })
+  }
+
   return (
+    <>
     <form
       className="space-y-3 text-right"
       onSubmit={(e) => {
@@ -178,48 +220,34 @@ function SupplierForm({
         if (mode === "create") {
           const v = supplierCreateSchema.safeParse({
             name: fd.get("name"),
-            phone: fd.get("phone"),
+            countryCode: fd.get("countryCode"),
+            notes: fd.get("notes"),
           })
           if (!v.success) {
             toast.error(v.error.issues[0]?.message ?? "تحقق من الحقول")
             return
           }
-          t(async () => {
-            const r = await createSupplier(v.data)
-            if (r.success) {
-              toast.success("تمت إضافة المورد")
-              onSuccess()
-              onClose()
-            } else {
-              toast.error("error" in r ? r.error : "فشل")
-            }
-          })
+          setPending({ mode: "create", data: v.data })
+          setConfirmOpen(true)
           return
         }
         const v = supplierUpdateSchema.safeParse({
           id: supplier?.id,
           name: fd.get("name"),
-          phone: fd.get("phone"),
+          countryCode: fd.get("countryCode"),
+          notes: fd.get("notes"),
         })
         if (!v.success) {
           toast.error(v.error.issues[0]?.message ?? "تحقق من الحقول")
           return
         }
-        t(async () => {
-          const r = await updateSupplier(v.data)
-          if (r.success) {
-            toast.success("تم التحديث")
-            onSuccess()
-            onClose()
-          } else {
-            toast.error("error" in r ? r.error : "فشل")
-          }
-        })
+        setPending({ mode: "edit", data: v.data })
+        setConfirmOpen(true)
       }}
     >
       {mode === "edit" && supplier ? <input type="hidden" name="id" value={supplier.id} readOnly /> : null}
       <div className="space-y-1.5">
-        <Label htmlFor={`${idBase}-n`}>اسم المورد</Label>
+        <Label htmlFor={`${idBase}-n`}>اسم التاجر</Label>
         <Input
           id={`${idBase}-n`}
           name="name"
@@ -230,14 +258,24 @@ function SupplierForm({
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor={`${idBase}-ph`}>جوال (اختياري)</Label>
-        <Input
-          id={`${idBase}-ph`}
-          name="phone"
-          dir="ltr"
-          maxLength={40}
-          placeholder="05xxxxxxxx"
-          defaultValue={supplier?.phone ?? ""}
+        <Label htmlFor={`${idBase}-cc`}>الدولة</Label>
+        <SupplierCountryCombobox
+          id={`${idBase}-cc`}
+          name="countryCode"
+          defaultValue={supplier?.countryCode ?? "SA"}
+          required
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor={`${idBase}-notes`}>ملاحظات (اختياري)</Label>
+        <Textarea
+          id={`${idBase}-notes`}
+          name="notes"
+          rows={3}
+          maxLength={2000}
+          className="resize-none text-right"
+          placeholder="مثال: شروط الدفع، جهة الاتصال…"
+          defaultValue={supplier?.notes ?? ""}
         />
       </div>
       <div className="flex justify-end gap-2 pt-1">
@@ -249,6 +287,43 @@ function SupplierForm({
         </Button>
       </div>
     </form>
+
+    <AlertDialog
+      open={confirmOpen}
+      onOpenChange={(o) => {
+        setConfirmOpen(o)
+        if (!o) setPending(null)
+      }}
+    >
+      <AlertDialogContent className="max-w-md" dir="rtl" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {pending?.mode === "edit"
+              ? "هل أنت متأكد من حفظ التعديلات على هذا المورد؟"
+              : "هل أنت متأكد من إضافة هذا المورد؟"}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {pending?.mode === "edit"
+              ? "سيتم تحديث الاسم والدولة والملاحظات في بطاقة المورد."
+              : "سيتم إنشاء بطاقة مورد جديدة ويمكن ربطها بالحركات لاحقاً."}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel type="button">إلغاء</AlertDialogCancel>
+          <AlertDialogAction
+            type="button"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            disabled={p}
+            onClick={() => {
+              if (pending) runSave(pending)
+            }}
+          >
+            {p ? "…" : "نعم، تأكيد"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }
 
@@ -275,14 +350,17 @@ function DeleteSupplierButton({
       </Button>
       <AlertDialogContent className="max-w-md" dir="rtl" onOpenAutoFocus={(e) => e.preventDefault()}>
         <AlertDialogHeader>
-          <AlertDialogTitle>حذف {supplier.name}؟</AlertDialogTitle>
+          <AlertDialogTitle>هل أنت متأكد من حذف هذا المورد؟</AlertDialogTitle>
           <AlertDialogDescription>
-            ستبقى حركات الإضافة المرتبطة بهذا المورد في السجل لكن بدون ربط بالمورد (حقل المورد يُفرّغ).
+            المورد: <span className="font-medium text-foreground">{supplier.name}</span>
+            <br />
+            ستبقى حركات الإضافة المرتبطة به في السجل لكن بدون ربط بالمورد (حقل المورد يُفرّغ).
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>إلغاء</AlertDialogCancel>
+          <AlertDialogCancel type="button">إلغاء</AlertDialogCancel>
           <AlertDialogAction
+            type="button"
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             disabled={p}
             onClick={() => {
@@ -298,7 +376,7 @@ function DeleteSupplierButton({
               })
             }}
           >
-            {p ? "…" : "تأكيد"}
+            {p ? "…" : "نعم، احذف"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

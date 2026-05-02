@@ -1,6 +1,13 @@
 import { z } from "zod"
 import { TransactionType } from "@/generated/prisma"
 import { ITEM_UNITS } from "@/lib/item-unit"
+import { isValidSupplierCountryCode } from "@/lib/supplier-country"
+
+const supplierCountryCodeSchema = z
+  .string()
+  .trim()
+  .transform((s) => s.toUpperCase())
+  .refine((c) => isValidSupplierCountryCode(c), { message: "رمز الدولة غير صالح" })
 
 const unitSchema = z.enum(ITEM_UNITS)
 
@@ -41,25 +48,24 @@ export const itemUpdateSchema = z.object({
 
 export const itemDeleteSchema = z.object({ id: idSchema })
 
+const supplierNotesField = z
+  .string()
+  .trim()
+  .max(2000)
+  .optional()
+  .or(z.literal(""))
+
 export const supplierCreateSchema = z.object({
   name: z.string().trim().min(1, "اسم المورد مطلوب").max(200),
-  phone: z
-    .string()
-    .trim()
-    .max(40)
-    .optional()
-    .or(z.literal("")),
+  countryCode: supplierCountryCodeSchema,
+  notes: supplierNotesField,
 })
 
 export const supplierUpdateSchema = z.object({
   id: idSchema,
   name: z.string().trim().min(1, "اسم المورد مطلوب").max(200),
-  phone: z
-    .string()
-    .trim()
-    .max(40)
-    .optional()
-    .or(z.literal("")),
+  countryCode: supplierCountryCodeSchema,
+  notes: supplierNotesField,
 })
 
 export const supplierDeleteSchema = z.object({ id: idSchema })
@@ -76,7 +82,8 @@ export const transactionAddSchema = z
       .optional()
       .or(z.literal("")),
     newSupplierName: z.string().trim().max(200).optional().or(z.literal("")),
-    newSupplierPhone: z.string().trim().max(40).optional().or(z.literal("")),
+    newSupplierCountryCode: z.string().trim().optional().or(z.literal("")),
+    newSupplierNotes: supplierNotesField,
     note: z
       .string()
       .trim()
@@ -100,6 +107,25 @@ export const transactionAddSchema = z
         message: "استخدم إما قائمة الموردين أو حقل التاجر الجديد، وليس الاثنين",
         path: ["newSupplierName"],
       })
+    }
+    if (newName) {
+      const cc = data.newSupplierCountryCode?.trim()
+      if (!cc) {
+        ctx.addIssue({
+          code: "custom",
+          message: "اختر دولة التاجر",
+          path: ["newSupplierCountryCode"],
+        })
+      } else {
+        const ok = supplierCountryCodeSchema.safeParse(cc)
+        if (!ok.success) {
+          ctx.addIssue({
+            code: "custom",
+            message: "رمز الدولة غير صالح",
+            path: ["newSupplierCountryCode"],
+          })
+        }
+      }
     }
   })
 

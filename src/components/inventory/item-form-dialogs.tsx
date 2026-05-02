@@ -4,6 +4,7 @@ import { useId, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import type { ItemForClient } from "@/lib/serialize-inventory"
 import { createItem, updateItem, deleteItem } from "@/lib/actions/inventory"
+import type { z } from "zod"
 import { itemCreateSchema, itemUpdateSchema } from "@/lib/validations/inventory"
 import { ITEM_UNITS, itemUnitLabel, itemUnitLabelFor, parseItemUnit } from "@/lib/item-unit"
 import { Button } from "@/components/ui/button"
@@ -63,44 +64,86 @@ function CreateForm({ onClose }: { onClose: () => void }) {
   const router = useRouter()
   const [p, t] = useTransition()
   const tId = useId()
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pending, setPending] = useState<z.infer<typeof itemCreateSchema> | null>(null)
+
+  function runCreate(data: z.infer<typeof itemCreateSchema>) {
+    t(async () => {
+      const r = await createItem(data)
+      if (r.success) {
+        toast.success("تمت الإضافة")
+        onClose()
+        router.refresh()
+      } else {
+        toast.error("error" in r ? (r as { error: string }).error : "فشل")
+      }
+      setConfirmOpen(false)
+      setPending(null)
+    })
+  }
+
   return (
-    <form
-      className="space-y-3"
-      onSubmit={(e) => {
-        e.preventDefault()
-        const fd = new FormData(e.currentTarget)
-        const v = itemCreateSchema.safeParse({
-          name: fd.get("name"),
-          minThreshold: fd.get("minThreshold"),
-          currentQuantity: fd.get("currentQuantity"),
-          unit: fd.get("unit"),
-        })
-        if (!v.success) {
-          toast.error(v.error.issues[0]?.message ?? "بيانات غير صالحة")
-          return
-        }
-        t(async () => {
-          const r = await createItem(v.data)
-          if (r.success) {
-            toast.success("تمت الإضافة")
-            onClose()
-            router.refresh()
-          } else {
-            toast.error("error" in r ? (r as { error: string }).error : "فشل")
+    <>
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault()
+          const fd = new FormData(e.currentTarget)
+          const v = itemCreateSchema.safeParse({
+            name: fd.get("name"),
+            minThreshold: fd.get("minThreshold"),
+            currentQuantity: fd.get("currentQuantity"),
+            unit: fd.get("unit"),
+          })
+          if (!v.success) {
+            toast.error(v.error.issues[0]?.message ?? "بيانات غير صالحة")
+            return
           }
-        })
-      }}
-    >
-      {fieldsCreate(tId)}
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={onClose}>
-          إلغاء
-        </Button>
-        <Button type="submit" disabled={p} className="min-w-24">
-          {p ? "…" : "حفظ"}
-        </Button>
-      </div>
-    </form>
+          setPending(v.data)
+          setConfirmOpen(true)
+        }}
+      >
+        {fieldsCreate(tId)}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            إلغاء
+          </Button>
+          <Button type="submit" disabled={p} className="min-w-24">
+            {p ? "…" : "حفظ"}
+          </Button>
+        </div>
+      </form>
+
+      <AlertDialog
+        open={confirmOpen}
+        onOpenChange={(o) => {
+          setConfirmOpen(o)
+          if (!o) setPending(null)
+        }}
+      >
+        <AlertDialogContent className="max-w-md" dir="rtl" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>هل أنت متأكد من إضافة هذه المادة؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم إنشاء سجل مادة جديد. إن كان الرصيد الافتتاحي أكبر من صفر يُسجَّل كحركة «رصيد افتتاحي».
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button">إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              type="button"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              disabled={p}
+              onClick={() => {
+                if (pending) runCreate(pending)
+              }}
+            >
+              {p ? "…" : "نعم، تأكيد"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
@@ -130,34 +173,45 @@ function EditForm({ item, onClose }: { item: ItemForClient; onClose: () => void 
   const router = useRouter()
   const [p, t] = useTransition()
   const tId = useId()
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pending, setPending] = useState<z.infer<typeof itemUpdateSchema> | null>(null)
+
+  function runUpdate(data: z.infer<typeof itemUpdateSchema>) {
+    t(async () => {
+      const r = await updateItem(data)
+      if (r.success) {
+        toast.success("تُمّ التعديل")
+        onClose()
+        router.refresh()
+      } else {
+        toast.error("error" in r ? (r as { error: string }).error : "فشل")
+      }
+      setConfirmOpen(false)
+      setPending(null)
+    })
+  }
+
   return (
-    <form
-      className="space-y-3"
-      onSubmit={(e) => {
-        e.preventDefault()
-        const fd = new FormData(e.currentTarget)
-        const v = itemUpdateSchema.safeParse({
-          id: item.id,
-          name: fd.get("name"),
-          minThreshold: fd.get("minThreshold"),
-          unit: fd.get("unit"),
-        })
-        if (!v.success) {
-          toast.error(v.error.issues[0]?.message ?? "بيانات غير صالحة")
-          return
-        }
-        t(async () => {
-          const r = await updateItem(v.data)
-          if (r.success) {
-            toast.success("تُمّ التعديل")
-            onClose()
-            router.refresh()
-          } else {
-            toast.error("error" in r ? (r as { error: string }).error : "فشل")
+    <>
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault()
+          const fd = new FormData(e.currentTarget)
+          const v = itemUpdateSchema.safeParse({
+            id: item.id,
+            name: fd.get("name"),
+            minThreshold: fd.get("minThreshold"),
+            unit: fd.get("unit"),
+          })
+          if (!v.success) {
+            toast.error(v.error.issues[0]?.message ?? "بيانات غير صالحة")
+            return
           }
-        })
-      }}
-    >
+          setPending(v.data)
+          setConfirmOpen(true)
+        }}
+      >
       <input name="id" type="hidden" value={item.id} readOnly />
       <div className="space-y-1.5 text-right">
         <Label htmlFor={`n2-${tId}`}>الاسم</Label>
@@ -207,6 +261,39 @@ function EditForm({ item, onClose }: { item: ItemForClient; onClose: () => void 
         </Button>
       </div>
     </form>
+
+      <AlertDialog
+        open={confirmOpen}
+        onOpenChange={(o) => {
+          setConfirmOpen(o)
+          if (!o) setPending(null)
+        }}
+      >
+        <AlertDialogContent className="max-w-md" dir="rtl" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>هل أنت متأكد من حفظ التعديلات على هذه المادة؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              المادة: <span className="font-medium text-foreground">{item.name}</span>
+              <br />
+              يُحدَّث الاسم وحد الإنذار والوحدة. الرصيد لا يتغير من هنا.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button">إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              type="button"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              disabled={p}
+              onClick={() => {
+                if (pending) runUpdate(pending)
+              }}
+            >
+              {p ? "…" : "نعم، تأكيد"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
@@ -260,15 +347,18 @@ export function DeleteItemButton({
       </Button>
       <AlertDialogContent className="max-w-md" dir="rtl" onOpenAutoFocus={(e) => e.preventDefault()}>
         <AlertDialogHeader>
-          <AlertDialogTitle>حذف {nameDisplay}؟</AlertDialogTitle>
+          <AlertDialogTitle>هل أنت متأكد من حذف هذه المادة؟</AlertDialogTitle>
           <AlertDialogDescription>
+            المادة: <span className="font-medium text-foreground">{nameDisplay}</span>
+            <br />
             يُسمح بالحذف فقط إن لم تُسجَّل أي حركة لهذه المادة. إن وُجدت حركات، سيظهر خطأ ولن يُحذف السجل
             التاريخي.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>إلغاء</AlertDialogCancel>
+          <AlertDialogCancel type="button">إلغاء</AlertDialogCancel>
           <AlertDialogAction
+            type="button"
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             onClick={() => {
               t(async () => {
@@ -284,7 +374,7 @@ export function DeleteItemButton({
             }}
             disabled={p}
           >
-            {p ? "…" : "تأكيد حذف"}
+            {p ? "…" : "نعم، احذف"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

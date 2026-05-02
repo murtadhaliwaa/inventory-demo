@@ -7,6 +7,7 @@ import html2canvas from "html2canvas"
 import { FileDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { DailyPdfPayload } from "@/lib/daily-report-pdf-types"
+import { countryFlagCdnUrl } from "@/lib/supplier-country"
 
 export type { DailyPdfPayload }
 
@@ -210,7 +211,41 @@ export function ExportDailyPdfButton(props: ExportDailyPdfButtonProps) {
                       </span>
                     </td>
                     <td style={{ ...thTd, borderColor: C.cellBorder, textAlign: "start" }}>{r.itemName}</td>
-                    <td style={{ ...thTd, borderColor: C.cellBorder, textAlign: "start" }}>{r.supplierName}</td>
+                    <td style={{ ...thTd, borderColor: C.cellBorder, textAlign: "start" }}>
+                      {(() => {
+                        const flagSrc =
+                          r.supplierCountryCode != null
+                            ? countryFlagCdnUrl(r.supplierCountryCode, 32)
+                            : null
+                        return flagSrc ? (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 8,
+                              verticalAlign: "middle",
+                            }}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={flagSrc}
+                              alt=""
+                              width={24}
+                              height={18}
+                              style={{
+                                objectFit: "cover",
+                                borderRadius: 3,
+                                border: `1px solid ${C.cellBorder}`,
+                                flexShrink: 0,
+                              }}
+                            />
+                            <span>{r.supplierName}</span>
+                          </span>
+                        ) : (
+                          r.supplierName
+                        )
+                      })()}
+                    </td>
                     <td
                       style={{
                         ...thTd,

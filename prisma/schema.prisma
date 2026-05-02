@@ -20,12 +20,16 @@ enum TransactionType {
 model Supplier {
   id           String        @id @default(cuid())
   name         String
-  phone        String?
+  /// رمز دولة ISO 3166-1 alpha-2 (أو OTHER) لعرض العلم والتسمية — افتراضي للصفوف القديمة عند الترحيل
+  countryCode  String        @default("SA") @map("country_code") @db.VarChar(8)
+  /// ملاحظات اختيارية على بطاقة التاجر
+  notes        String?       @map("notes") @db.Text
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
   transactions Transaction[]
 
   @@index([name])
+  @@index([countryCode])
   @@map("suppliers")
 }
 

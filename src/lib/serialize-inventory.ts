@@ -23,14 +23,16 @@ export function itemToClient(i: Item): ItemForClient {
 export type SupplierForClient = {
   id: string
   name: string
-  phone: string | null
+  countryCode: string
+  notes: string | null
 }
 
 export function supplierToClient(s: Supplier): SupplierForClient {
   return {
     id: s.id,
     name: s.name,
-    phone: s.phone,
+    countryCode: s.countryCode,
+    notes: s.notes,
   }
 }
 
@@ -41,7 +43,7 @@ export type DailyMovementForClient = {
   type: TransactionType
   quantity: string
   item: { id: string; name: string; unit: string }
-  supplier: { id: string; name: string } | null
+  supplier: { id: string; name: string; countryCode: string } | null
 }
 
 type TransactionWithRelations = {
@@ -50,7 +52,7 @@ type TransactionWithRelations = {
   type: TransactionType
   quantity: { toString(): string }
   item: Pick<Item, "id" | "name" | "unit">
-  supplier: Pick<Supplier, "id" | "name"> | null
+  supplier: Pick<Supplier, "id" | "name" | "countryCode"> | null
 }
 
 export function dailyMovementToClient(t: TransactionWithRelations): DailyMovementForClient {
@@ -64,6 +66,8 @@ export function dailyMovementToClient(t: TransactionWithRelations): DailyMovemen
       name: t.item.name,
       unit: t.item.unit,
     },
-    supplier: t.supplier ? { id: t.supplier.id, name: t.supplier.name } : null,
+    supplier: t.supplier
+      ? { id: t.supplier.id, name: t.supplier.name, countryCode: t.supplier.countryCode }
+      : null,
   }
 }

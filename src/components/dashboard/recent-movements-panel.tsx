@@ -12,6 +12,7 @@ import {
 import { formatDecimalQuantity, directionLabelFromTransactionType } from "@/lib/format"
 import { itemUnitLabelFor } from "@/lib/item-unit"
 import { TransactionType } from "@/generated/prisma"
+import { CountryFlag } from "@/components/inventory/country-flag"
 
 type Tx = DashboardData["recentTransactions"][number]
 
@@ -69,7 +70,10 @@ export function RecentMovementsPanel({ transactions }: { transactions: Tx[] }) {
                             className="text-[10px] leading-tight text-muted-foreground truncate max-w-[9rem]"
                             title={l.supplier.name}
                           >
-                            {l.supplier.name}
+                            <span className="me-0.5 shrink-0" aria-hidden>
+                              <CountryFlag code={l.supplier.countryCode} size={14} />
+                            </span>
+                            <span className="min-w-0">{l.supplier.name}</span>
                           </span>
                         ) : null}
                       </div>

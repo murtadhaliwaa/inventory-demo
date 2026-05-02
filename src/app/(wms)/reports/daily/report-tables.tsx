@@ -13,6 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { supplierCountryLabelAr } from "@/lib/supplier-country"
+import { CountryFlag } from "@/components/inventory/country-flag"
 
 /** جدول حركات اليوم مع فلترة */
 export function DailyAllMovements({ rows: src }: { rows: DailyMovementForClient[] }) {
@@ -52,7 +54,20 @@ export function DailyAllMovements({ rows: src }: { rows: DailyMovementForClient[
           if (c.row.original.type === TransactionType.WITHDRAW) {
             return <span className="text-muted-foreground text-xs">—</span>
           }
-          return <span className="text-sm">{s?.name ?? "—"}</span>
+          return (
+            <span className="inline-flex items-center gap-1 text-sm">
+              {s ? (
+                <>
+                  <span className="shrink-0" aria-hidden title={supplierCountryLabelAr(s.countryCode)}>
+                    <CountryFlag code={s.countryCode} size={18} />
+                  </span>
+                  <span className="min-w-0">{s.name}</span>
+                </>
+              ) : (
+                "—"
+              )}
+            </span>
+          )
         },
       },
       {

@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation"
 import { TransactionType } from "@/generated/prisma"
 import type { ItemForClient, SupplierForClient } from "@/lib/serialize-inventory"
 import { recordTransactionAdd, recordTransactionWithdraw } from "@/lib/actions/inventory"
-import { transactionAddSchema, transactionWithdrawSchema } from "@/lib/validations/inventory"
+import {
+  transactionAddSchema,
+  transactionWithdrawSchema,
+  type TransactionAddInput,
+  type TransactionWithdrawInput,
+} from "@/lib/validations/inventory"
+import { formatDecimalQuantity } from "@/lib/format"
 import { itemUnitLabelFor } from "@/lib/item-unit"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,7 +19,19 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SupplierCountryCombobox } from "@/components/inventory/supplier-country-select"
+import { CountryFlag } from "@/components/inventory/country-flag"
 import { Separator } from "@/components/ui/separator"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 import { PackagePlus, PackageMinus } from "lucide-react"
 
@@ -70,6 +88,30 @@ function AddMaterialsForm({ items, suppliers, readOnly = false }: ItemsSuppliers
   )
   const [supplierId, setSupplierId] = useState(() => suppliers[0]?.id ?? "")
   const idBase = useId()
+  const [confirmAddOpen, setConfirmAddOpen] = useState(false)
+  const [pendingAdd, setPendingAdd] = useState<TransactionAddInput | null>(null)
+
+  function runRecordAdd(payload: TransactionAddInput) {
+    t(async () => {
+      const r = await recordTransactionAdd({
+        itemId: payload.itemId,
+        quantity: payload.quantity,
+        supplierId: payload.supplierId ?? "",
+        newSupplierName: payload.newSupplierName ?? "",
+        newSupplierCountryCode: payload.newSupplierCountryCode ?? "",
+        newSupplierNotes: payload.newSupplierNotes ?? "",
+        note: payload.note ?? "",
+      })
+      if (r.success) {
+        toast.success("تم تسجيل الإضافة")
+        router.refresh()
+      } else {
+        toast.error("error" in r ? r.error : "فشل التسجيل")
+      }
+      setConfirmAddOpen(false)
+      setPendingAdd(null)
+    })
+  }
 
   return (
     <Card className="rounded-2xl border-border/60 shadow-[var(--wms-surface-elevated)]">
@@ -94,7 +136,9 @@ function AddMaterialsForm({ items, suppliers, readOnly = false }: ItemsSuppliers
               quantity: fd.get("quantity"),
               supplierId: supplierMode === "existing" ? supplierId : "",
               newSupplierName: supplierMode === "new" ? (fd.get("newSupplierName") as string) : "",
-              newSupplierPhone: supplierMode === "new" ? (fd.get("newSupplierPhone") as string) : "",
+              newSupplierCountryCode:
+                supplierMode === "new" ? (fd.get("newSupplierCountryCode") as string) : "",
+              newSupplierNotes: supplierMode === "new" ? (fd.get("newSupplierNotes") as string) : "",
               note: (fd.get("note") as string) ?? "",
             }
             const v = transactionAddSchema.safeParse(raw)
@@ -102,22 +146,8 @@ function AddMaterialsForm({ items, suppliers, readOnly = false }: ItemsSuppliers
               toast.error(v.error.issues[0]?.message ?? "تحقق من الحقول")
               return
             }
-            t(async () => {
-              const r = await recordTransactionAdd({
-                itemId: v.data.itemId,
-                quantity: v.data.quantity,
-                supplierId: v.data.supplierId ?? "",
-                newSupplierName: v.data.newSupplierName ?? "",
-                newSupplierPhone: v.data.newSupplierPhone ?? "",
-                note: v.data.note ?? "",
-              })
-              if (r.success) {
-                toast.success("تم تسجيل الإضافة")
-                router.refresh()
-              } else {
-                toast.error("error" in r ? r.error : "فشل التسجيل")
-              }
-            })
+            setPendingAdd(v.data)
+            setConfirmAddOpen(true)
           }}
         >
           <input type="hidden" name="itemId" value={itemId} />
@@ -172,14 +202,17 @@ function AddMaterialsForm({ items, suppliers, readOnly = false }: ItemsSuppliers
                 <SelectContent dir="rtl">
                   {suppliers.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.name}
+                      <span className="inline-flex items-center gap-2">
+                        <CountryFlag code={s.countryCode} size={18} />
+                        <span className="min-w-0">{s.name}</span>
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             ) : null}
             {supplierMode === "new" ? (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor={`${idBase}-ns`}>اسم التاجر</Label>
                   <Input
@@ -190,12 +223,24 @@ function AddMaterialsForm({ items, suppliers, readOnly = false }: ItemsSuppliers
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor={`${idBase}-ph`}>جوال (اختياري)</Label>
-                  <Input
-                    id={`${idBase}-ph`}
-                    name="newSupplierPhone"
-                    dir="ltr"
-                    placeholder="05xxxxxxxx"
+                  <Label htmlFor={`${idBase}-ncc`}>دولة التاجر</Label>
+                  <SupplierCountryCombobox
+                    id={`${idBase}-ncc`}
+                    name="newSupplierCountryCode"
+                    defaultValue="SA"
+                    required
+                    disabled={readOnly}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor={`${idBase}-nsn`}>ملاحظات على التاجر (اختياري)</Label>
+                  <Textarea
+                    id={`${idBase}-nsn`}
+                    name="newSupplierNotes"
+                    rows={2}
+                    maxLength={2000}
+                    className="resize-none"
+                    placeholder="تُحفظ مع بطاقة التاجر في الموردين"
                   />
                 </div>
               </div>
@@ -227,6 +272,57 @@ function AddMaterialsForm({ items, suppliers, readOnly = false }: ItemsSuppliers
             {readOnly ? "عرض فقط" : p ? "جاري الحفظ…" : "تسجيل الإضافة"}
           </Button>
         </form>
+
+        <AlertDialog
+          open={confirmAddOpen}
+          onOpenChange={(o) => {
+            setConfirmAddOpen(o)
+            if (!o) setPendingAdd(null)
+          }}
+        >
+          <AlertDialogContent className="max-w-md" dir="rtl" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>هل أنت متأكد من تسجيل هذه الإضافة؟</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  {pendingAdd ? (
+                    <>
+                      <p>
+                        <span className="font-medium text-foreground">المادة:</span>{" "}
+                        {items.find((i) => i.id === pendingAdd.itemId)?.name ?? "—"}
+                      </p>
+                      <p dir="ltr" className="font-mono">
+                        <span className="font-medium text-foreground">الكمية:</span>{" "}
+                        {formatDecimalQuantity(pendingAdd.quantity)}{" "}
+                        {itemUnitLabelFor(items.find((i) => i.id === pendingAdd.itemId)?.unit ?? "KG")}
+                      </p>
+                      <p>
+                        <span className="font-medium text-foreground">المورد:</span>{" "}
+                        {pendingAdd.newSupplierName?.trim()
+                          ? `تاجر جديد: ${pendingAdd.newSupplierName.trim()}`
+                          : (suppliers.find((s) => s.id === (pendingAdd.supplierId ?? "").trim())?.name ?? "—")}
+                      </p>
+                    </>
+                  ) : null}
+                  <p>سيُحدَّث رصيد المخزون فوراً ويظهر في التقارير.</p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel type="button">إلغاء</AlertDialogCancel>
+              <AlertDialogAction
+                type="button"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                disabled={p}
+                onClick={() => {
+                  if (pendingAdd) runRecordAdd(pendingAdd)
+                }}
+              >
+                {p ? "…" : "نعم، تأكيد"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         </fieldset>
       </CardContent>
     </Card>
@@ -238,6 +334,26 @@ function WithdrawMaterialsForm({ items, readOnly = false }: { items: ItemForClie
   const [p, t] = useTransition()
   const [itemId, setItemId] = useState(() => items[0]?.id ?? "")
   const idBase = useId()
+  const [confirmWithdrawOpen, setConfirmWithdrawOpen] = useState(false)
+  const [pendingWithdraw, setPendingWithdraw] = useState<TransactionWithdrawInput | null>(null)
+
+  function runRecordWithdraw(payload: TransactionWithdrawInput) {
+    t(async () => {
+      const r = await recordTransactionWithdraw({
+        itemId: payload.itemId,
+        quantity: payload.quantity,
+        note: payload.note ?? "",
+      })
+      if (r.success) {
+        toast.success("تم تسجيل السحب")
+        router.refresh()
+      } else {
+        toast.error("error" in r ? r.error : "فشل التسجيل")
+      }
+      setConfirmWithdrawOpen(false)
+      setPendingWithdraw(null)
+    })
+  }
 
   return (
     <Card className="rounded-2xl border-border/60 shadow-[var(--wms-surface-elevated)]">
@@ -267,19 +383,8 @@ function WithdrawMaterialsForm({ items, readOnly = false }: { items: ItemForClie
               toast.error(v.error.issues[0]?.message ?? "تحقق من الحقول")
               return
             }
-            t(async () => {
-              const r = await recordTransactionWithdraw({
-                itemId: v.data.itemId,
-                quantity: v.data.quantity,
-                note: v.data.note ?? "",
-              })
-              if (r.success) {
-                toast.success("تم تسجيل السحب")
-                router.refresh()
-              } else {
-                toast.error("error" in r ? r.error : "فشل التسجيل")
-              }
-            })
+            setPendingWithdraw(v.data)
+            setConfirmWithdrawOpen(true)
           }}
         >
           <input type="hidden" name="itemId" value={itemId} />
@@ -322,6 +427,53 @@ function WithdrawMaterialsForm({ items, readOnly = false }: { items: ItemForClie
             {readOnly ? "عرض فقط" : p ? "جاري الحفظ…" : "تسجيل السحب"}
           </Button>
         </form>
+
+        <AlertDialog
+          open={confirmWithdrawOpen}
+          onOpenChange={(o) => {
+            setConfirmWithdrawOpen(o)
+            if (!o) setPendingWithdraw(null)
+          }}
+        >
+          <AlertDialogContent className="max-w-md" dir="rtl" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>هل أنت متأكد من تسجيل هذا السحب؟</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  {pendingWithdraw ? (
+                    <>
+                      <p>
+                        <span className="font-medium text-foreground">المادة:</span>{" "}
+                        {items.find((i) => i.id === pendingWithdraw.itemId)?.name ?? "—"}
+                      </p>
+                      <p dir="ltr" className="font-mono">
+                        <span className="font-medium text-foreground">الكمية المسحوبة:</span>{" "}
+                        {formatDecimalQuantity(pendingWithdraw.quantity)}{" "}
+                        {itemUnitLabelFor(
+                          items.find((i) => i.id === pendingWithdraw.itemId)?.unit ?? "KG"
+                        )}
+                      </p>
+                    </>
+                  ) : null}
+                  <p>سيُنقص الرصيد فوراً. تأكد من أن الكمية متاحة.</p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel type="button">إلغاء</AlertDialogCancel>
+              <AlertDialogAction
+                type="button"
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={p}
+                onClick={() => {
+                  if (pendingWithdraw) runRecordWithdraw(pendingWithdraw)
+                }}
+              >
+                {p ? "…" : "نعم، تأكيد السحب"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         </fieldset>
       </CardContent>
     </Card>

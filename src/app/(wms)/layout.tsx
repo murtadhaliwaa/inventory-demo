@@ -40,7 +40,7 @@ export default function WmsLayout({ children }: { children: React.ReactNode }) {
           <ThemeSwitcher variant="toolbar" className="touch-manipulation" />
         </header>
         <div className="wms-content-shell min-w-0 flex-1 max-md:overflow-x-clip">
-          <div className="mx-auto w-full min-w-0 max-w-[90rem] px-3 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] max-md:max-w-[100vw] sm:px-6 sm:py-8 sm:pb-8">
+          <div className="mx-auto w-full min-w-0 max-w-[90rem] px-3 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] sm:px-6 sm:py-8 sm:pb-8">
             {children}
           </div>
         </div>

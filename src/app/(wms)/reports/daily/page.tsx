@@ -37,12 +37,12 @@ export default async function DailyReportPage({
   })
 
   return (
-    <div className="space-y-8">
+    <div className="min-w-0 max-w-full space-y-8">
       <PageHeader title="تقرير اليوم" description={dateLabel}>
         <ExportDailyPdfButton loadPayload={getDailyReportPdfPayload} />
       </PageHeader>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="rounded-2xl border-border/60 shadow-[var(--wms-surface-elevated)]">
+      <div className="grid min-w-0 max-w-full gap-4 lg:grid-cols-2 lg:items-start">
+        <Card className="min-w-0 max-w-full rounded-2xl border-border/60 shadow-[var(--wms-surface-elevated)]">
           <CardHeader>
             <CardTitle>ملخص الإضافات اليوم</CardTitle>
             <CardDescription>حركات نوع «إضافة» مع اسم المورد</CardDescription>
@@ -57,7 +57,7 @@ export default async function DailyReportPage({
                     عرض أول {r.todaysAdds.length} من {r.addsTotal} إضافة اليوم.
                   </p>
                 ) : null}
-                <div className="overflow-x-auto rounded-md border">
+                <div className="min-w-0 overflow-x-auto rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -103,7 +103,7 @@ export default async function DailyReportPage({
             )}
           </CardContent>
         </Card>
-        <Card className="rounded-2xl border-border/60 shadow-[var(--wms-surface-elevated)]">
+        <Card className="min-w-0 max-w-full rounded-2xl border-border/60 shadow-[var(--wms-surface-elevated)]">
           <CardHeader>
             <CardTitle>ملخص السحوبات اليوم</CardTitle>
             <CardDescription>حركات نوع «سحب»</CardDescription>
@@ -118,7 +118,7 @@ export default async function DailyReportPage({
                     عرض أول {r.todaysWithdraws.length} من {r.withdrawsTotal} سحب اليوم.
                   </p>
                 ) : null}
-                <div className="overflow-x-auto rounded-md border">
+                <div className="min-w-0 overflow-x-auto rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -148,7 +148,7 @@ export default async function DailyReportPage({
             )}
           </CardContent>
         </Card>
-        <Card className="rounded-2xl border-destructive/60 bg-destructive/5 shadow-[var(--wms-surface-elevated)] lg:col-span-2">
+        <Card className="min-w-0 max-w-full rounded-2xl border-destructive/60 bg-destructive/5 shadow-[var(--wms-surface-elevated)] lg:col-span-2">
           <CardHeader>
             <div className="text-destructive flex items-start justify-between gap-2">
               <div>
@@ -162,7 +162,7 @@ export default async function DailyReportPage({
             {r.lowStock.length === 0 ? (
               <p className="text-muted-foreground text-sm">لا مواد تحتاج تنبيهاً اليوم.</p>
             ) : (
-              <div className="overflow-x-auto rounded-md border">
+              <div className="min-w-0 overflow-x-auto rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -198,7 +198,7 @@ export default async function DailyReportPage({
           </CardContent>
         </Card>
       </div>
-      <Card className="rounded-2xl border-border/60 shadow-[var(--wms-surface-elevated)]">
+      <Card className="min-w-0 max-w-full rounded-2xl border-border/60 shadow-[var(--wms-surface-elevated)]">
         <CardHeader>
           <CardTitle>كل حركات اليوم</CardTitle>
           <CardDescription>
@@ -237,13 +237,13 @@ export default async function DailyReportPage({
           ) : null}
         </CardContent>
       </Card>
-      <Card className="rounded-2xl border-border/60 shadow-[var(--wms-surface-elevated)]">
+      <Card className="min-w-0 max-w-full rounded-2xl border-border/60 shadow-[var(--wms-surface-elevated)]">
         <CardHeader>
           <CardTitle>الرصيد الحالي لكل مادة</CardTitle>
           <CardDescription>يُمثّل وضع المخزون بعد حركات اليوم (نهاية اليوم)</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto rounded-md border">
+          <div className="min-w-0 overflow-x-auto rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>

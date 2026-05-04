@@ -23,14 +23,14 @@ export default function WmsLayout({ children }: { children: React.ReactNode }) {
             <SidebarTrigger className="shrink-0 touch-manipulation" />
             <Separator orientation="vertical" className="h-5" />
             <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-              <span className="relative inline-flex size-8 shrink-0 overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-border/70 sm:size-9 sm:rounded-xl">
+              <span className="relative inline-flex h-8 w-[6.75rem] shrink-0 overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-border/70 sm:h-9 sm:w-[8rem] sm:rounded-xl">
                 <Image
                   src="/company-logo.png"
                   alt=""
                   fill
                   quality={95}
-                  className="object-contain p-0.5 sm:p-1"
-                  sizes="(max-width: 640px) 64px, 72px"
+                  className="object-contain object-center p-0.5 sm:p-1"
+                  sizes="(max-width: 640px) 108px, 128px"
                 />
               </span>
               <h1 className="line-clamp-2 min-w-0 text-xs font-semibold leading-snug tracking-tight text-foreground sm:line-clamp-1 sm:truncate sm:text-sm md:text-base">

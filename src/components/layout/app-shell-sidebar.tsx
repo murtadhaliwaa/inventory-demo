@@ -56,14 +56,14 @@ export function AppShellSidebar() {
       <SidebarHeader className="border-b border-sidebar-border/90 bg-sidebar/50 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))] backdrop-blur-[2px]">
         <div className="flex w-full flex-1 items-start justify-between gap-2 overflow-hidden text-right text-sm font-semibold leading-tight text-sidebar-foreground group-data-[collapsible=icon]:px-0">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden pr-0.5">
-            <div className="relative size-9 shrink-0 overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-sidebar-border/80 sm:size-10 sm:rounded-xl group-data-[collapsible=icon]:size-8">
+            <div className="relative h-9 w-[7.5rem] shrink-0 overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-sidebar-border/80 sm:h-10 sm:w-[8.75rem] sm:rounded-xl group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:w-8">
               <Image
                 src="/company-logo.png"
                 alt="معمل الاتحاد"
                 fill
                 quality={95}
-                className="object-contain p-1 group-data-[collapsible=icon]:p-0.5"
-                sizes="(max-width: 640px) 72px, 80px"
+                className="object-contain object-center p-1 group-data-[collapsible=icon]:p-0.5"
+                sizes="(max-width: 640px) 120px, 140px"
                 priority
               />
             </div>

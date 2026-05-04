@@ -19,11 +19,16 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "معمل الاتحاد | نظام إدارة المخازن",
   description: "معمل الاتحاد — مواد خام ومنتجات نهائية (بلاستيك وأنابيب)",
-  /** أيقونة التبويب والاختصارات — PNG عالي الدقة (865×646) بدل أيقونة القالب */
+  /** أيقونات التبويب: `src/app/icon.png` و `apple-icon.png` — يولّدها Next تلقائياً */
   icons: {
     icon: [{ url: "/company-logo.png", type: "image/png", sizes: "865x646" }],
     shortcut: [{ url: "/company-logo.png", type: "image/png", sizes: "865x646" }],
-    apple: [{ url: "/company-logo.png", type: "image/png", sizes: "180x180" }],
+    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
+  },
+  /** بلاطة ويندوز / Edge عند تثبيت الاختصار — بدل الحرف الأول من العنوان */
+  other: {
+    "msapplication-TileImage": "/company-logo.png",
+    "msapplication-TileColor": "#1e3a8a",
   },
 }
 

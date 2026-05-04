@@ -13,11 +13,11 @@ export function PageHeader({ title, description, className, children }: PageHead
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6",
+        "flex min-w-0 w-full max-w-full flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6",
         className
       )}
     >
-      <div className="min-w-0 space-y-1.5 text-right">
+      <div className="min-w-0 max-w-full space-y-1.5 text-right">
         <div className="wms-page-accent-line" aria-hidden />
         <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl md:text-3xl">{title}</h1>
         {description ? (

@@ -86,12 +86,12 @@ function KpiStat({
   return (
     <Card
       className={cn(
-        "wms-stat-card touch-manipulation rounded-2xl border-border/60 shadow-none",
+        "wms-stat-card w-full min-w-0 max-w-full touch-manipulation rounded-2xl border-border/60 py-0 shadow-none",
         danger && "wms-stat-card--danger border-red-600 dark:border-red-500"
       )}
     >
-      <CardHeader className="flex flex-row items-start justify-between gap-1 pb-2 pt-4">
-        <div className="min-w-0 text-right text-sm text-muted-foreground">
+      <CardHeader className="flex min-w-0 w-full flex-row items-start justify-between gap-2 px-4 pb-3 pt-4 sm:px-6">
+        <div className="min-w-0 flex-1 text-right text-sm leading-snug text-muted-foreground break-words">
           {label}
           <div
             className={cn(
@@ -120,7 +120,7 @@ function KpiStat({
 
 function KpiGrid({ rows, data, columns }: { rows: KpiRow[]; data: DashboardData; columns: string }) {
   return (
-    <div className={cn("grid grid-cols-1 gap-3", columns)}>
+    <div className={cn("grid min-w-0 max-w-full grid-cols-1 gap-3", columns)}>
       {rows.map((row) => {
         const { value, danger } = row.resolve(data)
         return (
@@ -140,9 +140,9 @@ function KpiGrid({ rows, data, columns }: { rows: KpiRow[]; data: DashboardData;
 
 export function DashboardKpiGrids({ data }: { data: DashboardData }) {
   return (
-    <>
+    <div className="min-w-0 max-w-full space-y-3">
       <KpiGrid rows={PRIMARY_ROW} data={data} columns="sm:grid-cols-2 lg:grid-cols-4" />
       <KpiGrid rows={SECONDARY_ROW} data={data} columns="sm:grid-cols-3" />
-    </>
+    </div>
   )
 }

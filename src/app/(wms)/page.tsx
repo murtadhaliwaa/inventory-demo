@@ -9,7 +9,7 @@ export default async function DashboardPage() {
   const data = await getDashboardData()
 
   return (
-    <div className="space-y-8">
+    <div className="min-w-0 max-w-full space-y-6 sm:space-y-8">
       <PageHeader
         title="لوحة التحكم"
         description="معمل الاتحاد — نظام إدارة المخازن: حركات اليوم، تنبيهات النقص، وأحدث السجلات."
@@ -17,7 +17,7 @@ export default async function DashboardPage() {
 
       <DashboardKpiGrids data={data} />
 
-      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+      <div className="grid min-w-0 max-w-full gap-4 lg:grid-cols-2 lg:items-start">
         <LowStockPanel lowStock={data.lowStock} />
         <RecentMovementsPanel transactions={data.recentTransactions} />
       </div>

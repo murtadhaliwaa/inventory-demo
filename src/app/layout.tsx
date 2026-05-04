@@ -19,6 +19,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "معمل الاتحاد | نظام إدارة المخازن",
   description: "معمل الاتحاد — مواد خام ومنتجات نهائية (بلاستيك وأنابيب)",
+  /** أيقونة التبويب والاختصارات — PNG عالي الدقة (865×646) بدل أيقونة القالب */
+  icons: {
+    icon: [{ url: "/company-logo.png", type: "image/png", sizes: "865x646" }],
+    shortcut: [{ url: "/company-logo.png", type: "image/png", sizes: "865x646" }],
+    apple: [{ url: "/company-logo.png", type: "image/png", sizes: "180x180" }],
+  },
 }
 
 /** شاشات آمنة + مقياس مناسب للجوال (الشقوق والهوم انديكاتور) */

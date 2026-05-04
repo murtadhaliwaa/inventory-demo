@@ -28,8 +28,9 @@ export default function WmsLayout({ children }: { children: React.ReactNode }) {
                   src="/company-logo.png"
                   alt=""
                   fill
+                  quality={95}
                   className="object-contain p-0.5 sm:p-1"
-                  sizes="(max-width: 640px) 32px, 36px"
+                  sizes="(max-width: 640px) 64px, 72px"
                 />
               </span>
               <h1 className="line-clamp-2 min-w-0 text-xs font-semibold leading-snug tracking-tight text-foreground sm:line-clamp-1 sm:truncate sm:text-sm md:text-base">

@@ -61,8 +61,9 @@ export function AppShellSidebar() {
                 src="/company-logo.png"
                 alt="معمل الاتحاد"
                 fill
+                quality={95}
                 className="object-contain p-1 group-data-[collapsible=icon]:p-0.5"
-                sizes="(max-width: 640px) 36px, 40px"
+                sizes="(max-width: 640px) 72px, 80px"
                 priority
               />
             </div>

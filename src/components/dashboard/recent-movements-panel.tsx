@@ -21,17 +21,17 @@ const rowHover =
 
 export function RecentMovementsPanel({ transactions }: { transactions: Tx[] }) {
   return (
-    <Card className="wms-dashboard-panel flex flex-col gap-0 py-6 shadow-none">
+    <Card className="wms-dashboard-panel flex min-w-0 max-w-full flex-col gap-0 py-6 shadow-none">
       <CardHeader className="gap-0 pb-3">
         <CardTitle className="leading-snug">أحدث الحركات</CardTitle>
         <CardDescription>آخر التحديثات على المخزون</CardDescription>
       </CardHeader>
-      <CardContent className="px-6">
+      <CardContent className="min-w-0 px-3 sm:px-6">
         {transactions.length === 0 ? (
           <p className="text-muted-foreground text-sm leading-relaxed">لا توجد حركات بعد.</p>
         ) : (
-          <div className="max-h-72 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] pr-0.5">
-            <Table>
+          <div className="max-h-72 max-w-full min-w-0 overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch] touch-pan-x touch-pan-y">
+            <Table className="w-max min-w-full">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="text-start">الزمن</TableHead>
@@ -51,10 +51,7 @@ export function RecentMovementsPanel({ transactions }: { transactions: Tx[] }) {
                         })}
                       </span>
                     </TableCell>
-                    <TableCell
-                      className="text-start max-w-[7rem] truncate text-sm text-foreground"
-                      title={l.item.name}
-                    >
+                    <TableCell className="text-start whitespace-nowrap text-sm text-foreground">
                       {l.item.name}
                     </TableCell>
                     <TableCell className="text-start align-top">
@@ -66,10 +63,7 @@ export function RecentMovementsPanel({ transactions }: { transactions: Tx[] }) {
                           {directionLabelFromTransactionType(l.type)}
                         </Badge>
                         {l.type === TransactionType.ADD && l.supplier ? (
-                          <span
-                            className="text-[10px] leading-tight text-muted-foreground truncate max-w-[9rem]"
-                            title={l.supplier.name}
-                          >
+                          <span className="inline-flex max-w-none items-center gap-0.5 text-[10px] leading-tight whitespace-nowrap text-muted-foreground">
                             <span className="me-0.5 shrink-0" aria-hidden>
                               <CountryFlag code={l.supplier.countryCode} size={14} />
                             </span>

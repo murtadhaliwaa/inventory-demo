@@ -26,7 +26,7 @@ export function LowStockPanel({ lowStock }: { lowStock: Row[] }) {
   return (
     <Card
       className={cn(
-        "wms-dashboard-panel flex flex-col gap-0 py-6 shadow-none",
+        "wms-dashboard-panel flex min-w-0 max-w-full flex-col gap-0 py-6 shadow-none",
         hasAlerts && "wms-dashboard-panel--alert",
         hasAlerts && "bg-red-50/35 dark:bg-red-950/25"
       )}
@@ -59,13 +59,13 @@ export function LowStockPanel({ lowStock }: { lowStock: Row[] }) {
           ) : null}
         </div>
       </CardHeader>
-      <CardContent className="px-6">
+      <CardContent className="min-w-0 px-3 sm:px-6">
         {!hasAlerts ? (
           <p className="text-muted-foreground text-sm leading-relaxed">
             لا يوجد تنبيه — المخزون فوق حدود الأمان.
           </p>
         ) : (
-          <Table>
+          <Table className="w-max min-w-full">
             <TableHeader>
               <TableRow className="border-red-200/90 hover:bg-transparent dark:border-red-900/70">
                 <TableHead className={headCell}>المادة</TableHead>

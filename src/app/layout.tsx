@@ -19,6 +19,20 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "معمل الاتحاد | نظام إدارة المخازن",
   description: "معمل الاتحاد — مواد خام ومنتجات نهائية (بلاستيك وأنابيب)",
+  manifest: "/manifest.webmanifest",
+  applicationName: "معمل الاتحاد",
+  appleWebApp: {
+    capable: true,
+    title: "معمل الاتحاد",
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
 }
 
 /** شاشات آمنة + مقياس مناسب للجوال (الشقوق والهوم انديكاتور) */
@@ -26,6 +40,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#B86B0E",
 }
 
 /**

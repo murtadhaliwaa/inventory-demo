@@ -21,9 +21,12 @@ import { CountryFlag } from "@/components/inventory/country-flag"
 export function DailyAllMovements({
   rows: src,
   showFullDateTime = false,
+  singleItem = false,
 }: {
   rows: DailyMovementForClient[]
   showFullDateTime?: boolean
+  /** تقرير مادة واحدة: إخفاء عمود المادة وفلتر الاسم */
+  singleItem?: boolean
 }) {
   const [nameQ, setN] = useState("")
   const [dir, setD] = useState<"all" | TransactionType>("all")
@@ -31,14 +34,14 @@ export function DailyAllMovements({
   const data = useMemo(() => {
     const q = nameQ.trim().toLowerCase()
     return src.filter((r) => {
-      const n = !q || r.item.name.toLowerCase().includes(q)
+      const n = singleItem || !q || r.item.name.toLowerCase().includes(q)
       const b = dir === "all" || r.type === dir
       return n && b
     })
-  }, [src, nameQ, dir])
+  }, [src, nameQ, dir, singleItem])
 
-  const columns: ColumnDef<DailyMovementForClient>[] = useMemo(
-    () => [
+  const columns: ColumnDef<DailyMovementForClient>[] = useMemo(() => {
+    const cols: ColumnDef<DailyMovementForClient>[] = [
       {
         accessorKey: "createdAt",
         header: showFullDateTime ? "التاريخ والوقت" : "الوقت",
@@ -50,11 +53,16 @@ export function DailyAllMovements({
           />
         ),
       },
-      {
+    ]
+    if (!singleItem) {
+      cols.push({
         id: "item",
         header: "المادة",
         cell: (c) => <span className="font-medium">{c.row.original.item.name}</span>,
-      },
+      })
+    }
+    return [
+      ...cols,
       {
         id: "supplier",
         header: "المورد",
@@ -112,9 +120,8 @@ export function DailyAllMovements({
           )
         },
       },
-    ],
-    [showFullDateTime]
-  )
+    ]
+  }, [showFullDateTime, singleItem])
 
   const t = useReactTable({
     data,
@@ -125,23 +132,25 @@ export function DailyAllMovements({
   })
 
   if (src.length === 0) {
-    return <p className="text-muted-foreground text-sm">لا حركات اليوم.</p>
+    return <p className="text-muted-foreground text-sm">لا حركات في هذه الفترة.</p>
   }
   return (
     <div className="space-y-3">
       <div className="flex flex-col flex-wrap items-stretch gap-3 sm:flex-row sm:items-end">
-        <div className="min-w-0 sm:max-w-sm">
-          <Label className="text-muted-foreground text-xs" htmlFor="d-name">
-            فلترة اسم
-          </Label>
-          <Input
-            id="d-name"
-            className="mt-1.5"
-            value={nameQ}
-            onChange={(e) => setN(e.target.value)}
-            placeholder="جزء من اسم المادة"
-          />
-        </div>
+        {!singleItem ? (
+          <div className="min-w-0 sm:max-w-sm">
+            <Label className="text-muted-foreground text-xs" htmlFor="d-name">
+              فلترة اسم
+            </Label>
+            <Input
+              id="d-name"
+              className="mt-1.5"
+              value={nameQ}
+              onChange={(e) => setN(e.target.value)}
+              placeholder="جزء من اسم المادة"
+            />
+          </div>
+        ) : null}
         <div>
           <Label className="text-muted-foreground text-xs" htmlFor="d-d">
             النوع

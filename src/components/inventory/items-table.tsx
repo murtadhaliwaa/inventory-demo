@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ClipboardList } from "lucide-react"
+import { ClipboardList, FileBarChart } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const pageSize = 8
@@ -75,6 +75,21 @@ export function ItemsDataTable({
             <span className="text-muted-foreground font-mono text-sm tabular-nums" dir="ltr">
               {formatDecimalQuantity(r.minThreshold)} {itemUnitLabelFor(r.unit)}
             </span>
+          )
+        },
+      },
+      {
+        id: "report",
+        header: "تقرير",
+        cell: (ctx) => {
+          const r = ctx.row.original
+          return (
+            <Button type="button" size="sm" variant="outline" asChild className="gap-1.5">
+              <Link href={`/reports/items/${r.id}`}>
+                <FileBarChart className="size-3.5" aria-hidden />
+                تقرير
+              </Link>
+            </Button>
           )
         },
       },

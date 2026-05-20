@@ -8,6 +8,7 @@ import {
   ScrollText,
   ClipboardList,
   Truck,
+  FileBarChart,
   X,
 } from "lucide-react"
 import Image from "next/image"
@@ -37,6 +38,12 @@ const items = [
   { href: "/items", label: "المواد", icon: Package },
   { href: "/suppliers", label: "الموردون", icon: Truck },
   { href: "/reports/daily", label: "التقارير", icon: ScrollText },
+  {
+    href: "/reports/items",
+    label: "تقارير المواد",
+    icon: FileBarChart,
+    matchPrefix: "/reports/items",
+  },
 ]
 
 export function AppShellSidebar() {
@@ -93,9 +100,11 @@ export function AppShellSidebar() {
           <SidebarGroupLabel className="text-end text-xs">القائمة</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map(({ href, label, icon: Icon }) => {
+              {items.map(({ href, label, icon: Icon, matchPrefix }) => {
+                const prefix = matchPrefix ?? href
                 const active =
-                  path === href || (href !== "/" && Boolean(path?.startsWith(href)))
+                  path === href ||
+                  (prefix !== "/" && Boolean(path?.startsWith(prefix)))
                 return (
                   <SidebarMenuItem key={href}>
                     <SidebarMenuButton

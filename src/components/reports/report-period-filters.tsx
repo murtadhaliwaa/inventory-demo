@@ -21,6 +21,8 @@ import {
 type ReportPeriodFiltersProps = {
   initial: ReportPeriodFilterInitial
   activeQuery: string
+  /** مسار التقرير بدون query (مثل /reports/daily أو /reports/items/abc) */
+  hrefBase?: string
 }
 
 const selectTriggerClass = "h-10 w-full min-h-10"
@@ -51,7 +53,11 @@ function buildReportQuery(
   return q.toString()
 }
 
-export function ReportPeriodFilters({ initial, activeQuery }: ReportPeriodFiltersProps) {
+export function ReportPeriodFilters({
+  initial,
+  activeQuery,
+  hrefBase = "/reports/daily",
+}: ReportPeriodFiltersProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [period, setPeriod] = useState<ReportPeriodType>(initial.type)
@@ -77,12 +83,12 @@ export function ReportPeriodFilters({ initial, activeQuery }: ReportPeriodFilter
 
     const t = window.setTimeout(() => {
       startTransition(() => {
-        router.replace(`/reports/daily?${next}`, { scroll: false })
+        router.replace(`${hrefBase}?${next}`, { scroll: false })
       })
     }, 300)
 
     return () => window.clearTimeout(t)
-  }, [period, date, from, to, activeQuery, router])
+  }, [period, date, from, to, activeQuery, router, hrefBase])
 
   const dateMode =
     period === "monthly" ? "my" : period === "yearly" ? "y" : period === "custom" ? null : "dmy"

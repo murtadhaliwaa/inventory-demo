@@ -24,7 +24,7 @@ import {
   transactionWithdrawSchema,
 } from "@/lib/validations/inventory"
 
-const paths = ["/", "/items", "/reports/daily", "/operations", "/suppliers"] as const
+const paths = ["/", "/items", "/reports/daily", "/reports/items", "/operations", "/suppliers"] as const
 
 function revalidateApp() {
   for (const p of paths) revalidatePath(p)
@@ -69,6 +69,44 @@ export async function listItemsPaged(opts?: { page?: number; pageSize?: number }
     take: pageSize,
   })
   return { rows, total, page, pageSize, totalPages }
+}
+
+/** قائمة المواد لاختيار تقرير مادة واحدة (قيم نصية للعميل) */
+export async function listItemsForReports() {
+  await requireUser()
+  const rows = await db.item.findMany({
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      unit: true,
+      currentQuantity: true,
+      minThreshold: true,
+    },
+  })
+  return rows.map((i) => ({
+    id: i.id,
+    name: i.name,
+    unit: i.unit,
+    currentQuantity: i.currentQuantity.toString(),
+    minThreshold: i.minThreshold.toString(),
+  }))
+}
+
+export async function getItemForReport(itemId: string) {
+  await requireUser()
+  return db.item.findUnique({
+    where: { id: itemId },
+    select: {
+      id: true,
+      name: true,
+      unit: true,
+      currentQuantity: true,
+      minThreshold: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  })
 }
 
 export async function listSuppliers() {
@@ -547,6 +585,155 @@ async function balancesAtPeriodEnd(periodEnd: Date): Promise<PeriodItemBalance[]
   })
 }
 
+/** رصيد مادة واحدة عند لحظة زمنية (نهاية فترة) */
+async function balanceAtPeriodEndForItem(
+  itemId: string,
+  periodEnd: Date
+): Promise<PeriodItemBalance | null> {
+  const item = await db.item.findUnique({ where: { id: itemId } })
+  if (!item) return null
+
+  const now = new Date()
+  if (periodEnd >= now) {
+    return {
+      id: item.id,
+      name: item.name,
+      currentQuantity: item.currentQuantity,
+      minThreshold: item.minThreshold,
+      unit: item.unit,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    }
+  }
+
+  const rows = await db.$queryRaw<Array<{ delta: Prisma.Decimal | null }>>`
+    SELECT COALESCE(
+      SUM(
+        CASE
+          WHEN type = 'ADD' THEN quantity
+          ELSE -quantity
+        END
+      ),
+      0
+    ) AS delta
+    FROM transactions
+    WHERE item_id = ${itemId} AND created_at > ${periodEnd}
+  `
+  const after = new Prisma.Decimal(rows[0]?.delta?.toString() ?? "0")
+  const atEnd = new Prisma.Decimal(item.currentQuantity.toString()).sub(after)
+  return {
+    id: item.id,
+    name: item.name,
+    currentQuantity: atEnd,
+    minThreshold: item.minThreshold,
+    unit: item.unit,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+  }
+}
+
+export async function getItemPeriodReport(
+  itemId: string,
+  opts?: {
+    movementsPage?: number
+    movementsPageSize?: number
+  } & ReportPeriodParams
+) {
+  await requireUser()
+  const item = await getItemForReport(itemId)
+  if (!item) return null
+
+  const period = resolveReportPeriod(opts ?? {})
+  const { start, end } = period
+  const movementsPage = clampPage(opts?.movementsPage ?? 1)
+  const movementsPageSize = clampPageSize(opts?.movementsPageSize ?? 50)
+  const rangeWhere = { itemId, createdAt: { gte: start, lte: end } }
+  const openingAt = new Date(start.getTime() - 1)
+
+  const [
+    openingBalance,
+    closingBalance,
+    periodMovesTotal,
+    periodMoves,
+    addsTotal,
+    withdrawsTotal,
+    periodAdds,
+    periodWithdraws,
+    addSum,
+    withdrawSum,
+  ] = await Promise.all([
+    balanceAtPeriodEndForItem(itemId, openingAt),
+    balanceAtPeriodEndForItem(itemId, end),
+    db.transaction.count({ where: rangeWhere }),
+    db.transaction.findMany({
+      where: rangeWhere,
+      select: dailyTxSelect,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip: (movementsPage - 1) * movementsPageSize,
+      take: movementsPageSize,
+    }),
+    db.transaction.count({
+      where: { ...rangeWhere, type: TransactionType.ADD },
+    }),
+    db.transaction.count({
+      where: { ...rangeWhere, type: TransactionType.WITHDRAW },
+    }),
+    db.transaction.findMany({
+      where: { ...rangeWhere, type: TransactionType.ADD },
+      select: dailyTxSelect,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: DAILY_SUMMARY_CAP,
+    }),
+    db.transaction.findMany({
+      where: { ...rangeWhere, type: TransactionType.WITHDRAW },
+      select: dailyTxSelect,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: DAILY_SUMMARY_CAP,
+    }),
+    db.transaction.aggregate({
+      where: { ...rangeWhere, type: TransactionType.ADD },
+      _sum: { quantity: true },
+    }),
+    db.transaction.aggregate({
+      where: { ...rangeWhere, type: TransactionType.WITHDRAW },
+      _sum: { quantity: true },
+    }),
+  ])
+
+  const totalAdded = addSum._sum.quantity ?? new Prisma.Decimal(0)
+  const totalWithdrawn = withdrawSum._sum.quantity ?? new Prisma.Decimal(0)
+  const netChange = new Prisma.Decimal(totalAdded.toString()).sub(
+    new Prisma.Decimal(totalWithdrawn.toString())
+  )
+  const closeQty = closingBalance?.currentQuantity ?? item.currentQuantity
+  const isLowStock = closeQty.lte(item.minThreshold)
+
+  return {
+    item,
+    period,
+    openingBalance,
+    closingBalance,
+    totalAdded,
+    totalWithdrawn,
+    netChange,
+    isLowStock,
+    periodMoves,
+    periodMovesTotal,
+    movementsPage,
+    movementsPageSize,
+    movementsTotalPages: Math.max(1, Math.ceil(periodMovesTotal / movementsPageSize)),
+    periodAdds,
+    periodWithdraws,
+    addsTotal,
+    withdrawsTotal,
+    addsTruncated: addsTotal > DAILY_SUMMARY_CAP,
+    withdrawsTruncated: withdrawsTotal > DAILY_SUMMARY_CAP,
+    periodStart: start,
+    periodEnd: end,
+    showFullDateTime: period.type !== "daily",
+  }
+}
+
 export async function getDailyReport(
   opts?: {
     movementsPage?: number
@@ -670,4 +857,76 @@ export async function getDailyReportPdfPayload(
   }))
 
   return { dateLabel, adds, withdraws, balances }
+}
+
+/** PDF لتقرير مادة واحدة */
+export async function getItemReportPdfPayload(
+  itemId: string,
+  params?: ReportPeriodParams
+) {
+  await requireUser()
+  const item = await getItemForReport(itemId)
+  if (!item) throw new Error("المادة غير موجودة")
+
+  const period = resolveReportPeriod(params ?? {})
+  const { start, end } = period
+  const unit = itemUnitLabelFor(item.unit)
+  const dateLabel = `${item.name} — ${period.titleLabel} — ${period.rangeLabel}`
+  const rangeWhere = { itemId, createdAt: { gte: start, lte: end } }
+  const openingAt = new Date(start.getTime() - 1)
+
+  const [addRows, withdrawRows, openingBalance, closingBalance, addSum, withdrawSum] =
+    await Promise.all([
+      db.transaction.findMany({
+        where: { ...rangeWhere, type: TransactionType.ADD },
+        select: dailyTxSelect,
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      }),
+      db.transaction.findMany({
+        where: { ...rangeWhere, type: TransactionType.WITHDRAW },
+        select: dailyTxSelect,
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      }),
+      balanceAtPeriodEndForItem(itemId, openingAt),
+      balanceAtPeriodEndForItem(itemId, end),
+      db.transaction.aggregate({
+        where: { ...rangeWhere, type: TransactionType.ADD },
+        _sum: { quantity: true },
+      }),
+      db.transaction.aggregate({
+        where: { ...rangeWhere, type: TransactionType.WITHDRAW },
+        _sum: { quantity: true },
+      }),
+    ])
+
+  const timeFmt =
+    period.type === "daily"
+      ? (d: Date) => formatLocaleTime(d, { timeStyle: "short" })
+      : (d: Date) => formatLocaleDateTime(d, { dateStyle: "short", timeStyle: "short" })
+
+  const fmtQty = (q: Prisma.Decimal) => `${formatDecimalQuantity(q)} ${unit}`
+  const openQty = openingBalance?.currentQuantity ?? item.currentQuantity
+  const closeQty = closingBalance?.currentQuantity ?? item.currentQuantity
+  const totalAdded = addSum._sum.quantity ?? new Prisma.Decimal(0)
+  const totalWithdrawn = withdrawSum._sum.quantity ?? new Prisma.Decimal(0)
+
+  return {
+    itemName: item.name,
+    unitLabel: unit,
+    dateLabel,
+    openingQty: fmtQty(openQty),
+    closingQty: fmtQty(closeQty),
+    totalAdded: fmtQty(totalAdded),
+    totalWithdrawn: fmtQty(totalWithdrawn),
+    adds: addRows.map((t) => ({
+      time: timeFmt(new Date(t.createdAt)),
+      supplierName: t.supplier?.name ?? "—",
+      supplierCountryCode: t.supplier?.countryCode ?? null,
+      qtyUnit: fmtQty(t.quantity),
+    })),
+    withdraws: withdrawRows.map((t) => ({
+      time: timeFmt(new Date(t.createdAt)),
+      qtyUnit: fmtQty(t.quantity),
+    })),
+  }
 }

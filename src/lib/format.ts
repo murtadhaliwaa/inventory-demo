@@ -8,8 +8,10 @@ export {
   type ItemUnit,
 } from "@/lib/item-unit"
 
+import { DISPLAY_LOCALE } from "@/lib/locale-display"
+
 const nf = (n: number) =>
-  new Intl.NumberFormat("ar-EG", { maximumFractionDigits: 4 }).format(n)
+  new Intl.NumberFormat(DISPLAY_LOCALE, { maximumFractionDigits: 4 }).format(n)
 
 /** عرض كمية مخزنيّة (Decimal) */
 export function formatDecimalQuantity(value: { toString: () => string } | string) {

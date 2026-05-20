@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { formatDecimalQuantity, directionLabelFromTransactionType } from "@/lib/format"
+import { formatLocaleDateTime } from "@/lib/locale-display"
 import { itemUnitLabelFor } from "@/lib/item-unit"
 import { TransactionType } from "@/generated/prisma"
 import { CountryFlag } from "@/components/inventory/country-flag"
@@ -45,7 +46,7 @@ export function RecentMovementsPanel({ transactions }: { transactions: Tx[] }) {
                   <TableRow key={l.id} className={rowHover}>
                     <TableCell className="text-start whitespace-nowrap text-xs text-muted-foreground">
                       <span dir="ltr" className="inline-block">
-                        {new Date(l.createdAt).toLocaleString("ar-EG", {
+                        {formatLocaleDateTime(new Date(l.createdAt), {
                           dateStyle: "short",
                           timeStyle: "short",
                         })}

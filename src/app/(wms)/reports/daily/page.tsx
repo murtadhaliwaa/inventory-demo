@@ -1,7 +1,13 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { getDailyReport, getDailyReportPdfPayload } from "@/lib/actions/inventory"
 import { formatDecimalQuantity } from "@/lib/format"
 import { itemUnitLabelFor } from "@/lib/item-unit"
+import {
+  reportSearchParams,
+  resolveReportPeriod,
+  toReportPeriodFilterInitial,
+} from "@/lib/report-period"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -14,54 +20,112 @@ import {
 } from "@/components/ui/table"
 import { AlertTriangle } from "lucide-react"
 import { PageHeader } from "@/components/layout/page-header"
-import { DailyAllMovements } from "./report-tables"
 import { CountryFlag } from "@/components/inventory/country-flag"
-import { ExportDailyPdfButton } from "./daily-report-pdf-button"
 import { dailyMovementToClient } from "@/lib/serialize-inventory"
 import { Button } from "@/components/ui/button"
+import {
+  ReportFiltersBlock,
+  ReportMovementsBlock,
+  ReportPdfExportBlock,
+} from "./report-client-blocks"
+import { formatLocaleDateTime, formatLocaleTime } from "@/lib/locale-display"
 
-/** تقرير يومي: إضافات مع مورد، سحوبات، تنبيهات، تصدير PDF */
+function periodTimeCell(d: Date, showFull: boolean) {
+  if (showFull) {
+    return (
+      <span dir="ltr" className="inline-block whitespace-nowrap text-xs tabular-nums">
+        {formatLocaleDateTime(d, { dateStyle: "short", timeStyle: "short" })}
+      </span>
+    )
+  }
+  return (
+    <span dir="ltr" className="inline-block whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+      {formatLocaleTime(d)}
+    </span>
+  )
+}
+
+/** تقرير مخزون حسب الفترة: يومي / أسبوعي / شهري / سنوي / مخصص */
 export default async function DailyReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mp?: string }>
+  searchParams: Promise<{ mp?: string; period?: string; date?: string; from?: string; to?: string }>
 }) {
   const sp = await searchParams
   const mp = Math.max(1, parseInt(sp.mp ?? "1", 10) || 1)
-  const r = await getDailyReport({ movementsPage: mp })
-  const dateLabel = r.dayStart.toLocaleDateString("ar-EG", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
+  const period = resolveReportPeriod(sp)
+  const reportParams = {
+    period: period.type,
+    date: period.dateInput,
+    from: period.fromInput,
+    to: period.toInput,
+    movementsPage: mp,
+  }
+  const canonical = reportSearchParams(period)
+  const urlPeriod = sp.period ?? "daily"
+  const urlNeedsSync =
+    urlPeriod !== period.type ||
+    (period.type === "custom"
+      ? sp.from !== period.fromInput || sp.to !== period.toInput
+      : sp.date !== period.dateInput)
+
+  if (urlNeedsSync) {
+    const mpSuffix = mp > 1 ? `&mp=${mp}` : ""
+    redirect(`/reports/daily?${canonical}${mpSuffix}`)
+  }
+
+  const r = await getDailyReport(reportParams)
+  const qs = (page: number) => `/reports/daily?${reportSearchParams(period, { mp: page })}`
+  const pdfParams = {
+    period: period.type,
+    date: period.dateInput,
+    from: period.fromInput,
+    to: period.toInput,
+  }
+  const pdfPayload = await getDailyReportPdfPayload(pdfParams)
+  const periodNoun = period.type === "daily" ? "اليوم" : "الفترة"
 
   return (
     <div className="min-w-0 max-w-full space-y-8">
-      <PageHeader title="تقرير اليوم" description={dateLabel}>
-        <ExportDailyPdfButton loadPayload={getDailyReportPdfPayload} />
+      <PageHeader
+        title={period.titleLabel}
+        description={`${period.rangeLabel} · ${period.rangeNumeric}`}
+      >
+        <ReportPdfExportBlock
+          exportKey={canonical}
+          periodParams={pdfParams}
+          payload={pdfPayload}
+        />
       </PageHeader>
+
+      <ReportFiltersBlock
+        initial={toReportPeriodFilterInitial(period)}
+        activeQuery={canonical}
+      />
+
       <div className="grid min-w-0 max-w-full gap-4 lg:grid-cols-2 lg:items-start">
         <Card className="min-w-0 max-w-full rounded-2xl border-border/60 shadow-[var(--wms-surface-elevated)]">
           <CardHeader>
-            <CardTitle>ملخص الإضافات اليوم</CardTitle>
-            <CardDescription>حركات نوع «إضافة» مع اسم المورد</CardDescription>
+            <CardTitle>ملخص الإضافات</CardTitle>
+            <CardDescription>حركات نوع «إضافة» مع اسم المورد خلال {periodNoun}</CardDescription>
           </CardHeader>
           <CardContent>
             {r.addsTotal === 0 ? (
-              <p className="text-muted-foreground text-sm">لا إضافات مسجّلة اليوم.</p>
+              <p className="text-muted-foreground text-sm">لا إضافات مسجّلة في هذه الفترة.</p>
             ) : (
               <>
                 {r.addsTruncated ? (
                   <p className="text-muted-foreground mb-2 text-xs">
-                    عرض أول {r.todaysAdds.length} من {r.addsTotal} إضافة اليوم.
+                    عرض أول {r.todaysAdds.length} من {r.addsTotal} إضافة.
                   </p>
                 ) : null}
                 <div className="min-w-0 overflow-x-auto rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-start">الساعة</TableHead>
+                        <TableHead className="text-start">
+                          {r.showFullDateTime ? "التاريخ والوقت" : "الساعة"}
+                        </TableHead>
                         <TableHead className="text-start">المادة</TableHead>
                         <TableHead className="text-start">المورد</TableHead>
                         <TableHead className="text-end">كمية</TableHead>
@@ -70,10 +134,8 @@ export default async function DailyReportPage({
                     <TableBody>
                       {r.todaysAdds.map((t) => (
                         <TableRow key={t.id}>
-                          <TableCell className="text-start whitespace-nowrap text-xs text-muted-foreground">
-                            <span dir="ltr" className="inline-block">
-                              {new Date(t.createdAt).toLocaleTimeString("ar-EG")}
-                            </span>
+                          <TableCell className="text-start">
+                            {periodTimeCell(new Date(t.createdAt), r.showFullDateTime)}
                           </TableCell>
                           <TableCell className="text-start font-medium">
                             {t.item.name}
@@ -105,24 +167,26 @@ export default async function DailyReportPage({
         </Card>
         <Card className="min-w-0 max-w-full rounded-2xl border-border/60 shadow-[var(--wms-surface-elevated)]">
           <CardHeader>
-            <CardTitle>ملخص السحوبات اليوم</CardTitle>
-            <CardDescription>حركات نوع «سحب»</CardDescription>
+            <CardTitle>ملخص السحوبات</CardTitle>
+            <CardDescription>حركات نوع «سحب» خلال {periodNoun}</CardDescription>
           </CardHeader>
           <CardContent>
             {r.withdrawsTotal === 0 ? (
-              <p className="text-muted-foreground text-sm">لا سحوبات اليوم.</p>
+              <p className="text-muted-foreground text-sm">لا سحوبات في هذه الفترة.</p>
             ) : (
               <>
                 {r.withdrawsTruncated ? (
                   <p className="text-muted-foreground mb-2 text-xs">
-                    عرض أول {r.todaysWithdraws.length} من {r.withdrawsTotal} سحب اليوم.
+                    عرض أول {r.todaysWithdraws.length} من {r.withdrawsTotal} سحب.
                   </p>
                 ) : null}
                 <div className="min-w-0 overflow-x-auto rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-start">الساعة</TableHead>
+                        <TableHead className="text-start">
+                          {r.showFullDateTime ? "التاريخ والوقت" : "الساعة"}
+                        </TableHead>
                         <TableHead className="text-start">المادة</TableHead>
                         <TableHead className="text-end">كمية</TableHead>
                       </TableRow>
@@ -130,10 +194,8 @@ export default async function DailyReportPage({
                     <TableBody>
                       {r.todaysWithdraws.map((t) => (
                         <TableRow key={t.id}>
-                          <TableCell className="text-start whitespace-nowrap text-xs text-muted-foreground">
-                            <span dir="ltr" className="inline-block">
-                              {new Date(t.createdAt).toLocaleTimeString("ar-EG")}
-                            </span>
+                          <TableCell className="text-start">
+                            {periodTimeCell(new Date(t.createdAt), r.showFullDateTime)}
                           </TableCell>
                           <TableCell className="text-start font-medium">{t.item.name}</TableCell>
                           <TableCell className="text-end font-mono text-sm tabular-nums">
@@ -153,14 +215,14 @@ export default async function DailyReportPage({
             <div className="text-destructive flex items-start justify-between gap-2">
               <div>
                 <CardTitle>تنبيه: وصلت للحد الأدنى أو دونه</CardTitle>
-                <CardDescription>مراجعة عاجلة للمخزون</CardDescription>
+                <CardDescription>حسب الرصيد عند نهاية الفترة</CardDescription>
               </div>
               <AlertTriangle className="size-6 shrink-0" />
             </div>
           </CardHeader>
           <CardContent>
             {r.lowStock.length === 0 ? (
-              <p className="text-muted-foreground text-sm">لا مواد تحتاج تنبيهاً اليوم.</p>
+              <p className="text-muted-foreground text-sm">لا مواد تحتاج تنبيهاً في نهاية هذه الفترة.</p>
             ) : (
               <div className="min-w-0 overflow-x-auto rounded-md border">
                 <Table>
@@ -200,14 +262,17 @@ export default async function DailyReportPage({
       </div>
       <Card className="min-w-0 max-w-full rounded-2xl border-border/60 shadow-[var(--wms-surface-elevated)]">
         <CardHeader>
-          <CardTitle>كل حركات اليوم</CardTitle>
+          <CardTitle>كل حركات الفترة</CardTitle>
           <CardDescription>
             إضافة وسحب — فلترة من الجدول. عرض {r.todaysMoves.length} من {r.todaysMovesTotal} حركة (صفحة{" "}
             {r.movementsPage} من {r.movementsTotalPages}).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <DailyAllMovements rows={r.todaysMoves.map(dailyMovementToClient)} />
+          <ReportMovementsBlock
+            rows={r.todaysMoves.map(dailyMovementToClient)}
+            showFullDateTime={r.showFullDateTime}
+          />
           {r.movementsTotalPages > 1 ? (
             <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-2 text-xs">
               <span>
@@ -216,7 +281,7 @@ export default async function DailyReportPage({
               <div className="flex gap-2">
                 {r.movementsPage > 1 ? (
                   <Button type="button" variant="outline" size="sm" asChild>
-                    <Link href={`/reports/daily?mp=${r.movementsPage - 1}`}>السابق</Link>
+                    <Link href={qs(r.movementsPage - 1)}>السابق</Link>
                   </Button>
                 ) : (
                   <Button type="button" variant="outline" size="sm" disabled>
@@ -225,7 +290,7 @@ export default async function DailyReportPage({
                 )}
                 {r.movementsPage < r.movementsTotalPages ? (
                   <Button type="button" variant="outline" size="sm" asChild>
-                    <Link href={`/reports/daily?mp=${r.movementsPage + 1}`}>التالي</Link>
+                    <Link href={qs(r.movementsPage + 1)}>التالي</Link>
                   </Button>
                 ) : (
                   <Button type="button" variant="outline" size="sm" disabled>
@@ -239,8 +304,8 @@ export default async function DailyReportPage({
       </Card>
       <Card className="min-w-0 max-w-full rounded-2xl border-border/60 shadow-[var(--wms-surface-elevated)]">
         <CardHeader>
-          <CardTitle>الرصيد الحالي لكل مادة</CardTitle>
-          <CardDescription>يُمثّل وضع المخزون بعد حركات اليوم (نهاية اليوم)</CardDescription>
+          <CardTitle>الرصيد عند نهاية الفترة</CardTitle>
+          <CardDescription>وضع المخزون المحسوب بعد حركات الفترة المحددة</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="min-w-0 overflow-x-auto rounded-md border">

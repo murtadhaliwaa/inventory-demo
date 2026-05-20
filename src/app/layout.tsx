@@ -49,7 +49,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning className={baloo.variable}>
-      <body className={`${baloo.className} ${geistMono.variable} antialiased subpixel-antialiased`}>
+      <body
+        suppressHydrationWarning
+        className={`${baloo.className} ${geistMono.variable} antialiased subpixel-antialiased tabular-nums`}
+      >
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

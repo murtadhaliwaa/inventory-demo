@@ -8,6 +8,11 @@ import { db } from "@/lib/db"
 import { formatDecimalQuantity } from "@/lib/format"
 import type { DailyPdfPayload } from "@/lib/daily-report-pdf-types"
 import { itemUnitLabelFor } from "@/lib/item-unit"
+import { formatLocaleDateTime, formatLocaleTime } from "@/lib/locale-display"
+import {
+  resolveReportPeriod,
+  type ReportPeriodParams,
+} from "@/lib/report-period"
 import {
   itemCreateSchema,
   itemDeleteSchema,
@@ -480,19 +485,83 @@ const dailyTxSelect = {
   supplier: { select: { id: true, name: true, countryCode: true } },
 } as const
 
-export async function getDailyReport(opts?: {
-  movementsPage?: number
-  movementsPageSize?: number
-}) {
+type PeriodItemBalance = {
+  id: string
+  name: string
+  currentQuantity: Prisma.Decimal
+  minThreshold: Prisma.Decimal
+  unit: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+/** رصيد كل مادة عند نهاية الفترة (الرصيد الحالي ناقص حركات ما بعد الفترة) */
+async function balancesAtPeriodEnd(periodEnd: Date): Promise<PeriodItemBalance[]> {
+  const items = await db.item.findMany({ orderBy: { name: "asc" } })
+  const now = new Date()
+  if (periodEnd >= now) {
+    return items.map((i) => ({
+      id: i.id,
+      name: i.name,
+      currentQuantity: i.currentQuantity,
+      minThreshold: i.minThreshold,
+      unit: i.unit,
+      createdAt: i.createdAt,
+      updatedAt: i.updatedAt,
+    }))
+  }
+
+  const deltas = await db.$queryRaw<
+    Array<{ item_id: string; delta: Prisma.Decimal | null }>
+  >`
+    SELECT item_id,
+      COALESCE(
+        SUM(
+          CASE
+            WHEN type = 'ADD' THEN quantity
+            ELSE -quantity
+          END
+        ),
+        0
+      ) AS delta
+    FROM transactions
+    WHERE created_at > ${periodEnd}
+    GROUP BY item_id
+  `
+  const deltaByItem = new Map(
+    deltas.map((r) => [r.item_id, new Prisma.Decimal(r.delta?.toString() ?? "0")])
+  )
+
+  return items.map((i) => {
+    const after = deltaByItem.get(i.id) ?? new Prisma.Decimal(0)
+    const atEnd = new Prisma.Decimal(i.currentQuantity.toString()).sub(after)
+    return {
+      id: i.id,
+      name: i.name,
+      currentQuantity: atEnd,
+      minThreshold: i.minThreshold,
+      unit: i.unit,
+      createdAt: i.createdAt,
+      updatedAt: i.updatedAt,
+    }
+  })
+}
+
+export async function getDailyReport(
+  opts?: {
+    movementsPage?: number
+    movementsPageSize?: number
+  } & ReportPeriodParams
+) {
   await requireUser()
-  const { start, end } = startEndOfLocalDay()
+  const period = resolveReportPeriod(opts ?? {})
+  const { start, end } = period
   const movementsPage = clampPage(opts?.movementsPage ?? 1)
   const movementsPageSize = clampPageSize(opts?.movementsPageSize ?? 50)
-  const dayWhere = { createdAt: { gte: start, lte: end } }
+  const rangeWhere = { createdAt: { gte: start, lte: end } }
 
   const [
-    allItems,
-    lowStockRows,
+    endBalances,
     todaysMovesTotal,
     todaysMoves,
     addsTotal,
@@ -500,62 +569,41 @@ export async function getDailyReport(opts?: {
     todaysAdds,
     todaysWithdraws,
   ] = await Promise.all([
-    db.item.findMany({ orderBy: { name: "asc" } }),
-    db.$queryRaw<
-      Array<{
-        id: string
-        name: string
-        current_quantity: Prisma.Decimal
-        min_threshold: Prisma.Decimal
-        unit: string
-        created_at: Date
-        updated_at: Date
-      }>
-    >`
-      SELECT id, name, current_quantity, min_threshold, unit, created_at, updated_at
-      FROM items
-      WHERE current_quantity <= min_threshold
-      ORDER BY name ASC
-    `,
-    db.transaction.count({ where: dayWhere }),
+    balancesAtPeriodEnd(end),
+    db.transaction.count({ where: rangeWhere }),
     db.transaction.findMany({
-      where: dayWhere,
+      where: rangeWhere,
       select: dailyTxSelect,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       skip: (movementsPage - 1) * movementsPageSize,
       take: movementsPageSize,
     }),
     db.transaction.count({
-      where: { ...dayWhere, type: TransactionType.ADD },
+      where: { ...rangeWhere, type: TransactionType.ADD },
     }),
     db.transaction.count({
-      where: { ...dayWhere, type: TransactionType.WITHDRAW },
+      where: { ...rangeWhere, type: TransactionType.WITHDRAW },
     }),
     db.transaction.findMany({
-      where: { ...dayWhere, type: TransactionType.ADD },
+      where: { ...rangeWhere, type: TransactionType.ADD },
       select: dailyTxSelect,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: DAILY_SUMMARY_CAP,
     }),
     db.transaction.findMany({
-      where: { ...dayWhere, type: TransactionType.WITHDRAW },
+      where: { ...rangeWhere, type: TransactionType.WITHDRAW },
       select: dailyTxSelect,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: DAILY_SUMMARY_CAP,
     }),
   ])
 
-  const lowStock = lowStockRows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    currentQuantity: r.current_quantity,
-    minThreshold: r.min_threshold,
-    unit: r.unit,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
-  }))
+  const lowStock = endBalances
+    .filter((i) => i.currentQuantity.lte(i.minThreshold))
+    .sort((a, b) => a.name.localeCompare(b.name, "ar"))
 
   return {
+    period,
     todaysMoves,
     todaysMovesTotal,
     movementsPage,
@@ -568,47 +616,51 @@ export async function getDailyReport(opts?: {
     addsTruncated: addsTotal > DAILY_SUMMARY_CAP,
     withdrawsTruncated: withdrawsTotal > DAILY_SUMMARY_CAP,
     lowStock,
-    dayStart: start,
-    dayEnd: end,
-    endBalances: allItems,
+    periodStart: start,
+    periodEnd: end,
+    endBalances,
+    showFullDateTime: period.type !== "daily",
   }
 }
 
-/** يحمّل كل بيانات اليوم لتصدير PDF عند الطلب (لا يُستدعى إلا عند الضغط) */
-export async function getDailyReportPdfPayload(): Promise<DailyPdfPayload> {
+/** يحمّل بيانات الفترة لتصدير PDF عند الطلب (لا يُستدعى إلا عند الضغط) */
+export async function getDailyReportPdfPayload(
+  params?: ReportPeriodParams
+): Promise<DailyPdfPayload> {
   await requireUser()
-  const { start, end } = startEndOfLocalDay()
-  const dateLabel = start.toLocaleDateString("ar-EG", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
-  const dayWhere = { createdAt: { gte: start, lte: end } }
+  const period = resolveReportPeriod(params ?? {})
+  const { start, end } = period
+  const dateLabel = `${period.titleLabel} — ${period.rangeLabel}`
+  const rangeWhere = { createdAt: { gte: start, lte: end } }
 
   const [addRows, withdrawRows, items] = await Promise.all([
     db.transaction.findMany({
-      where: { ...dayWhere, type: TransactionType.ADD },
+      where: { ...rangeWhere, type: TransactionType.ADD },
       select: dailyTxSelect,
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     }),
     db.transaction.findMany({
-      where: { ...dayWhere, type: TransactionType.WITHDRAW },
+      where: { ...rangeWhere, type: TransactionType.WITHDRAW },
       select: dailyTxSelect,
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     }),
-    db.item.findMany({ orderBy: { name: "asc" } }),
+    balancesAtPeriodEnd(end),
   ])
 
+  const timeFmt =
+    period.type === "daily"
+      ? (d: Date) => formatLocaleTime(d, { timeStyle: "short" })
+      : (d: Date) => formatLocaleDateTime(d, { dateStyle: "short", timeStyle: "short" })
+
   const adds = addRows.map((t) => ({
-    time: new Date(t.createdAt).toLocaleTimeString("ar-EG", { timeStyle: "short" }),
+    time: timeFmt(new Date(t.createdAt)),
     itemName: t.item.name,
     supplierName: t.supplier?.name ?? "—",
     supplierCountryCode: t.supplier?.countryCode ?? null,
     qtyUnit: `${formatDecimalQuantity(t.quantity)} ${itemUnitLabelFor(t.item.unit)}`,
   }))
   const withdraws = withdrawRows.map((t) => ({
-    time: new Date(t.createdAt).toLocaleTimeString("ar-EG", { timeStyle: "short" }),
+    time: timeFmt(new Date(t.createdAt)),
     itemName: t.item.name,
     qtyUnit: `${formatDecimalQuantity(t.quantity)} ${itemUnitLabelFor(t.item.unit)}`,
   }))

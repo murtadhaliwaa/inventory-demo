@@ -12,12 +12,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { ClientDateTime } from "@/components/ui/client-date-time"
 import { cn } from "@/lib/utils"
 import { supplierCountryLabelAr } from "@/lib/supplier-country"
 import { CountryFlag } from "@/components/inventory/country-flag"
 
-/** جدول حركات اليوم مع فلترة */
-export function DailyAllMovements({ rows: src }: { rows: DailyMovementForClient[] }) {
+/** جدول حركات الفترة مع فلترة */
+export function DailyAllMovements({
+  rows: src,
+  showFullDateTime = false,
+}: {
+  rows: DailyMovementForClient[]
+  showFullDateTime?: boolean
+}) {
   const [nameQ, setN] = useState("")
   const [dir, setD] = useState<"all" | TransactionType>("all")
 
@@ -34,11 +41,13 @@ export function DailyAllMovements({ rows: src }: { rows: DailyMovementForClient[
     () => [
       {
         accessorKey: "createdAt",
-        header: "الوقت",
+        header: showFullDateTime ? "التاريخ والوقت" : "الوقت",
         cell: (c) => (
-          <span className="whitespace-nowrap text-xs" dir="ltr">
-            {new Date(c.getValue() as string).toLocaleString("ar-EG", { timeStyle: "short" })}
-          </span>
+          <ClientDateTime
+            iso={String(c.getValue())}
+            showFullDateTime={showFullDateTime}
+            className="whitespace-nowrap text-xs"
+          />
         ),
       },
       {
@@ -104,7 +113,7 @@ export function DailyAllMovements({ rows: src }: { rows: DailyMovementForClient[
         },
       },
     ],
-    []
+    [showFullDateTime]
   )
 
   const t = useReactTable({

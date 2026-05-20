@@ -1,12 +1,14 @@
 "use client"
 
-import { useRef, useState, type CSSProperties } from "react"
+import { useEffect, useRef, useState, type CSSProperties } from "react"
 import { flushSync } from "react-dom"
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
 import { FileDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { getDailyReportPdfPayload } from "@/lib/actions/inventory"
 import type { DailyPdfPayload } from "@/lib/daily-report-pdf-types"
+import type { ReportPeriodParams } from "@/lib/report-period"
 import { countryFlagCdnUrl } from "@/lib/supplier-country"
 
 export type { DailyPdfPayload }
@@ -26,34 +28,40 @@ function asciiPdfFileName(dateLabel: string) {
   return `etihad-wms-daily-${digits || Date.now()}.pdf`
 }
 
-type ExportDailyPdfButtonProps =
-  | { payload: DailyPdfPayload; loadPayload?: undefined }
-  | { loadPayload: () => Promise<DailyPdfPayload>; payload?: undefined }
+type ExportDailyPdfButtonProps = {
+  periodParams: ReportPeriodParams
+  payload: DailyPdfPayload
+}
 
 /**
  * تصدير PDF — ألوان hex فقط (html2canvas لا يدعم lab() من Tailwind)
  * العنصر مرئي للرaster (opacity 1) ومزاح خارج الشاشة
  */
+function periodParamsKey(p: ReportPeriodParams | undefined): string {
+  if (!p) return ""
+  return [p.period ?? "", p.date ?? "", p.from ?? "", p.to ?? ""].join("|")
+}
+
 export function ExportDailyPdfButton(props: ExportDailyPdfButtonProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [busy, setBusy] = useState(false)
-  const [loaded, setLoaded] = useState<DailyPdfPayload | null>(
-    "payload" in props && props.payload ? props.payload : null
-  )
+  const [preview, setPreview] = useState<DailyPdfPayload>(props.payload)
+  const periodKey = periodParamsKey(props.periodParams)
 
-  const payload = loaded ?? ("payload" in props ? props.payload ?? null : null)
+  useEffect(() => {
+    setPreview(props.payload)
+  }, [periodKey, props.payload])
+
+  const displayPayload = preview
 
   async function exportPdf() {
     setBusy(true)
     try {
-      let data = payload
-      if (!data && "loadPayload" in props && props.loadPayload) {
-        data = await props.loadPayload()
-        flushSync(() => {
-          setLoaded(data)
-        })
-      }
-      if (!data) return
+      const data = await getDailyReportPdfPayload(props.periodParams)
+
+      flushSync(() => {
+        setPreview(data)
+      })
 
       const el = ref.current
       if (!el) return
@@ -179,19 +187,19 @@ export function ExportDailyPdfButton(props: ExportDailyPdfButtonProps) {
         disabled={busy}
       >
         <FileDown className="size-3.5" />
-        {busy ? "جاري التصدير…" : "تصدير تقرير اليوم PDF"}
+        {busy ? "جاري التصدير…" : "تصدير التقرير PDF"}
       </Button>
 
       <div ref={ref} style={wrap} dir="rtl" aria-hidden>
         <div style={headerRule}>
-          <h1 style={h1}>معمل الاتحاد — تقرير مخزون يومي</h1>
-          <p style={dateLine}>{payload?.dateLabel ?? "…"}</p>
+          <h1 style={h1}>معمل الاتحاد — تقرير مخزون</h1>
+          <p style={dateLine}>{displayPayload?.dateLabel ?? "…"}</p>
         </div>
 
         <section style={sectionGap}>
           <h2 style={h2Red}>المواد المضافة (مع المورد)</h2>
-          {(payload?.adds ?? []).length === 0 ? (
-            <p style={emptyMsg}>لا إضافات مسجّلة اليوم.</p>
+          {(displayPayload?.adds ?? []).length === 0 ? (
+            <p style={emptyMsg}>لا إضافات في هذه الفترة.</p>
           ) : (
             <table style={tableBase}>
               <thead>
@@ -203,7 +211,7 @@ export function ExportDailyPdfButton(props: ExportDailyPdfButtonProps) {
                 </tr>
               </thead>
               <tbody>
-                {(payload?.adds ?? []).map((r, i) => (
+                {(displayPayload?.adds ?? []).map((r, i) => (
                   <tr key={i}>
                     <td style={{ ...thTd, borderColor: C.cellBorder, textAlign: "start" }}>
                       <span dir="ltr" style={{ display: "inline-block" }}>
@@ -265,8 +273,8 @@ export function ExportDailyPdfButton(props: ExportDailyPdfButtonProps) {
 
         <section style={sectionGap}>
           <h2 style={h2}>المواد المسحوبة</h2>
-          {(payload?.withdraws ?? []).length === 0 ? (
-            <p style={emptyMsg}>لا سحوبات مسجّلة اليوم.</p>
+          {(displayPayload?.withdraws ?? []).length === 0 ? (
+            <p style={emptyMsg}>لا سحوبات في هذه الفترة.</p>
           ) : (
             <table style={tableBase}>
               <thead>
@@ -277,7 +285,7 @@ export function ExportDailyPdfButton(props: ExportDailyPdfButtonProps) {
                 </tr>
               </thead>
               <tbody>
-                {(payload?.withdraws ?? []).map((r, i) => (
+                {(displayPayload?.withdraws ?? []).map((r, i) => (
                   <tr key={i}>
                     <td style={{ ...thTd, borderColor: C.cellBorder, textAlign: "start" }}>
                       <span dir="ltr" style={{ display: "inline-block" }}>
@@ -303,7 +311,7 @@ export function ExportDailyPdfButton(props: ExportDailyPdfButtonProps) {
         </section>
 
         <section style={sectionGap}>
-          <h2 style={h2}>الرصيد المتبقي لكل مادة (نهاية اليوم)</h2>
+          <h2 style={h2}>الرصيد المتبقي لكل مادة (نهاية الفترة)</h2>
           <table style={tableBase}>
             <thead>
               <tr style={{ backgroundColor: C.theadBg }}>
@@ -312,7 +320,7 @@ export function ExportDailyPdfButton(props: ExportDailyPdfButtonProps) {
               </tr>
             </thead>
             <tbody>
-              {(payload?.balances ?? []).map((r, i) => (
+              {(displayPayload?.balances ?? []).map((r, i) => (
                 <tr key={i}>
                   <td style={{ ...thTd, borderColor: C.cellBorder, textAlign: "start" }}>{r.itemName}</td>
                   <td

@@ -36,7 +36,7 @@ const items = [
   { href: "/operations", label: "العمليات اليومية", icon: ClipboardList },
   { href: "/items", label: "المواد", icon: Package },
   { href: "/suppliers", label: "الموردون", icon: Truck },
-  { href: "/reports/daily", label: "التقرير اليومي", icon: ScrollText },
+  { href: "/reports/daily", label: "التقارير", icon: ScrollText },
 ]
 
 export function AppShellSidebar() {

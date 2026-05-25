@@ -15,7 +15,10 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ClipboardList, FileBarChart } from "lucide-react"
-import { cn } from "@/lib/utils"
+import {
+  ITEMS_TABLE_COLUMN_ORDER,
+  itemsTableColumnClass,
+} from "@/components/inventory/items-table-layout"
 
 const pageSize = 8
 
@@ -61,7 +64,7 @@ export function ItemsDataTable({
           const r = ctx.row.original
           return (
             <span className="font-mono text-sm tabular-nums" dir="ltr">
-              {formatDecimalQuantity(r.currentQuantity)} {itemUnitLabelFor(r.unit)}
+              {formatDecimalQuantity(r.currentQuantity)}
             </span>
           )
         },
@@ -73,7 +76,7 @@ export function ItemsDataTable({
           const r = ctx.row.original
           return (
             <span className="text-muted-foreground font-mono text-sm tabular-nums" dir="ltr">
-              {formatDecimalQuantity(r.minThreshold)} {itemUnitLabelFor(r.unit)}
+              {formatDecimalQuantity(r.minThreshold)}
             </span>
           )
         },
@@ -84,19 +87,17 @@ export function ItemsDataTable({
         cell: (ctx) => {
           const r = ctx.row.original
           return (
-            <Button type="button" size="sm" variant="outline" asChild className="gap-1.5">
-              <Link href={`/reports/items/${r.id}`}>
-                <FileBarChart className="size-3.5" aria-hidden />
-                تقرير
-              </Link>
-            </Button>
+            <div className="flex justify-center">
+              <Button type="button" size="sm" variant="outline" asChild className="gap-1.5">
+                <Link href={`/reports/items/${r.id}`}>
+                  <FileBarChart className="size-3.5" aria-hidden />
+                  تقرير
+                </Link>
+              </Button>
+            </div>
           )
         },
       },
-    ]
-    if (!canManage) return base
-    return [
-      ...base,
       {
         id: "ops",
         header: "إدارة",
@@ -112,6 +113,17 @@ export function ItemsDataTable({
         enableHiding: false,
       },
     ]
+
+    const byId = Object.fromEntries(
+      base.map((c) => {
+        const key = c.id ?? ("accessorKey" in c ? String(c.accessorKey) : "")
+        return [key, c]
+      })
+    )
+    const order = canManage
+      ? ITEMS_TABLE_COLUMN_ORDER
+      : ITEMS_TABLE_COLUMN_ORDER.filter((id) => id !== "ops")
+    return order.map((id) => byId[id]).filter(Boolean) as ColumnDef<ItemForClient>[]
   }, [canManage])
 
   const table = useReactTable({
@@ -168,18 +180,16 @@ export function ItemsDataTable({
         </div>
       </div>
       <div className="wms-panel overflow-x-auto overflow-y-visible p-0">
-        <Table>
+        <Table className="table-fixed">
           <TableHeader>
             {table.getHeaderGroups().map((hg) => (
               <TableRow key={hg.id}>
                 {hg.headers.map((h) => {
                   const id = h.column.id
-                  const headAlign =
-                    id === "ops" ? "text-center" : id === "bal" || id === "safety" ? "text-end" : "text-start"
                   return (
                     <TableHead
                       key={h.id}
-                      className={cn("text-xs font-medium", headAlign)}
+                      className={itemsTableColumnClass(id, "text-xs font-medium align-middle")}
                     >
                       {h.isPlaceholder
                         ? null
@@ -196,15 +206,10 @@ export function ItemsDataTable({
                 <TableRow key={r.id} data-state={r.getIsSelected() && "selected"}>
                   {r.getVisibleCells().map((c) => {
                     const id = c.column.id
-                    const cellAlign =
-                      id === "ops" ? "text-center" : id === "bal" || id === "safety" ? "text-end" : "text-start"
                     return (
                       <TableCell
                         key={c.id}
-                        className={cn(
-                          "align-top text-sm",
-                          cellAlign
-                        )}
+                        className={itemsTableColumnClass(id, "align-middle text-sm")}
                       >
                         {flexRender(c.column.columnDef.cell, c.getContext())}
                       </TableCell>

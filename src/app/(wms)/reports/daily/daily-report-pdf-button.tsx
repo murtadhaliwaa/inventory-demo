@@ -1,9 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState, type CSSProperties } from "react"
+import { useRef, useState, type CSSProperties } from "react"
 import { flushSync } from "react-dom"
-import { jsPDF } from "jspdf"
-import html2canvas from "html2canvas"
 import { FileDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getDailyReportPdfPayload } from "@/lib/actions/inventory"
@@ -30,34 +28,24 @@ function asciiPdfFileName(dateLabel: string) {
 
 type ExportDailyPdfButtonProps = {
   periodParams: ReportPeriodParams
-  payload: DailyPdfPayload
 }
 
-/**
- * تصدير PDF — ألوان hex فقط (html2canvas لا يدعم lab() من Tailwind)
- * العنصر مرئي للرaster (opacity 1) ومزاح خارج الشاشة
- */
-function periodParamsKey(p: ReportPeriodParams | undefined): string {
-  if (!p) return ""
-  return [p.period ?? "", p.date ?? "", p.from ?? "", p.to ?? ""].join("|")
-}
-
+/** تصدير PDF عند الطلب فقط — بدون تحميل مسبق على الخادم */
 export function ExportDailyPdfButton(props: ExportDailyPdfButtonProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [busy, setBusy] = useState(false)
-  const [preview, setPreview] = useState<DailyPdfPayload>(props.payload)
-  const periodKey = periodParamsKey(props.periodParams)
-
-  useEffect(() => {
-    setPreview(props.payload)
-  }, [periodKey, props.payload])
+  const [preview, setPreview] = useState<DailyPdfPayload | null>(null)
 
   const displayPayload = preview
 
   async function exportPdf() {
     setBusy(true)
     try {
-      const data = await getDailyReportPdfPayload(props.periodParams)
+      const [{ default: html2canvas }, { jsPDF }, data] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+        getDailyReportPdfPayload(props.periodParams),
+      ])
 
       flushSync(() => {
         setPreview(data)

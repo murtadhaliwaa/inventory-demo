@@ -1,9 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState, type CSSProperties } from "react"
+import { useRef, useState, type CSSProperties } from "react"
 import { flushSync } from "react-dom"
-import { jsPDF } from "jspdf"
-import html2canvas from "html2canvas"
 import { FileDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getItemReportPdfPayload } from "@/lib/actions/inventory"
@@ -29,27 +27,21 @@ function asciiPdfFileName(itemName: string) {
 type ExportItemPdfButtonProps = {
   itemId: string
   periodParams: ReportPeriodParams
-  payload: ItemPdfPayload
-}
-
-function periodParamsKey(itemId: string, p: ReportPeriodParams): string {
-  return [itemId, p.period ?? "", p.date ?? "", p.from ?? "", p.to ?? ""].join("|")
 }
 
 export function ExportItemPdfButton(props: ExportItemPdfButtonProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [busy, setBusy] = useState(false)
-  const [preview, setPreview] = useState<ItemPdfPayload>(props.payload)
-  const periodKey = periodParamsKey(props.itemId, props.periodParams)
-
-  useEffect(() => {
-    setPreview(props.payload)
-  }, [periodKey, props.payload])
+  const [preview, setPreview] = useState<ItemPdfPayload | null>(null)
 
   async function exportPdf() {
     setBusy(true)
     try {
-      const data = await getItemReportPdfPayload(props.itemId, props.periodParams)
+      const [{ default: html2canvas }, { jsPDF }, data] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+        getItemReportPdfPayload(props.itemId, props.periodParams),
+      ])
       flushSync(() => setPreview(data))
 
       const el = ref.current

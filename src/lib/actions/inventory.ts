@@ -534,8 +534,21 @@ type PeriodItemBalance = {
 }
 
 /** رصيد كل مادة عند نهاية الفترة (الرصيد الحالي ناقص حركات ما بعد الفترة) */
+const itemBalanceSelect = {
+  id: true,
+  name: true,
+  currentQuantity: true,
+  minThreshold: true,
+  unit: true,
+  createdAt: true,
+  updatedAt: true,
+} as const
+
 async function balancesAtPeriodEnd(periodEnd: Date): Promise<PeriodItemBalance[]> {
-  const items = await db.item.findMany({ orderBy: { name: "asc" } })
+  const items = await db.item.findMany({
+    orderBy: { name: "asc" },
+    select: itemBalanceSelect,
+  })
   const now = new Date()
   if (periodEnd >= now) {
     return items.map((i) => ({
@@ -640,7 +653,18 @@ export async function getItemPeriodReport(
   } & ReportPeriodParams
 ) {
   await requireUser()
-  const item = await getItemForReport(itemId)
+  const item = await db.item.findUnique({
+    where: { id: itemId },
+    select: {
+      id: true,
+      name: true,
+      unit: true,
+      currentQuantity: true,
+      minThreshold: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  })
   if (!item) return null
 
   const period = resolveReportPeriod(opts ?? {})

@@ -118,7 +118,9 @@ export function AppShellSidebar() {
                     >
                       <Link
                         href={href}
-                        prefetch
+                        prefetch={
+                          href === "/reports/daily" || href === "/reports/items" ? true : undefined
+                        }
                         aria-label={label}
                         onClick={() => {
                           if (isMobile) setOpenMobile(false)

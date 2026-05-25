@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { formatLocaleDateTime } from "@/lib/locale-display"
+import { formatDateTimeDmy, formatLocaleTime } from "@/lib/locale-display"
 
 type ClientDateTimeProps = {
   iso: string
@@ -16,11 +16,9 @@ export function ClientDateTime({ iso, showFullDateTime = false, className }: Cli
   useEffect(() => {
     const d = new Date(iso)
     setLabel(
-      formatLocaleDateTime(d, {
-        ...(showFullDateTime
-          ? { dateStyle: "short" as const, timeStyle: "short" as const }
-          : { timeStyle: "short" as const }),
-      })
+      showFullDateTime
+        ? formatDateTimeDmy(d)
+        : formatLocaleTime(d, { hour: "2-digit", minute: "2-digit", hour12: true })
     )
   }, [iso, showFullDateTime])
 

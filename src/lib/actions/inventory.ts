@@ -8,7 +8,7 @@ import { db } from "@/lib/db"
 import { formatDecimalQuantity } from "@/lib/format"
 import type { DailyPdfPayload } from "@/lib/daily-report-pdf-types"
 import { itemUnitLabelFor } from "@/lib/item-unit"
-import { formatLocaleDateTime, formatLocaleTime } from "@/lib/locale-display"
+import { formatDateTimeDmy, formatLocaleTime } from "@/lib/locale-display"
 import {
   resolveReportPeriod,
   type ReportPeriodParams,
@@ -861,7 +861,7 @@ export async function getDailyReportPdfPayload(
   const timeFmt =
     period.type === "daily"
       ? (d: Date) => formatLocaleTime(d, { timeStyle: "short" })
-      : (d: Date) => formatLocaleDateTime(d, { dateStyle: "short", timeStyle: "short" })
+      : (d: Date) => formatDateTimeDmy(d)
 
   const adds = addRows.map((t) => ({
     time: timeFmt(new Date(t.createdAt)),
@@ -926,7 +926,7 @@ export async function getItemReportPdfPayload(
   const timeFmt =
     period.type === "daily"
       ? (d: Date) => formatLocaleTime(d, { timeStyle: "short" })
-      : (d: Date) => formatLocaleDateTime(d, { dateStyle: "short", timeStyle: "short" })
+      : (d: Date) => formatDateTimeDmy(d)
 
   const fmtQty = (q: Prisma.Decimal) => `${formatDecimalQuantity(q)} ${unit}`
   const openQty = openingBalance?.currentQuantity ?? item.currentQuantity

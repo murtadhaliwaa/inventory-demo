@@ -22,12 +22,18 @@ export function formatLocaleTime(
   return d.toLocaleTimeString(DISPLAY_LOCALE, opts)
 }
 
-/** تاريخ بصيغة يوم/شهر/سنة مع أرقام إنجليزية: 04/04/2025 */
+/** تاريخ بصيغة يوم/شهر/سنة (LTR ثابت): 24/5/2026 */
 export function formatDateDmy(d: Date): string {
-  const day = String(d.getDate()).padStart(2, "0")
-  const month = String(d.getMonth() + 1).padStart(2, "0")
-  const year = String(d.getFullYear())
-  return `${day}/${month}/${year}`
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`
+}
+
+/** تاريخ ووقت: 24/5/2026 10:59 ص */
+export function formatDateTimeDmy(d: Date): string {
+  return `${formatDateDmy(d)} ${formatLocaleTime(d, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  })}`
 }
 
 export function formatDateDmyLong(d: Date, withWeekday = false): string {

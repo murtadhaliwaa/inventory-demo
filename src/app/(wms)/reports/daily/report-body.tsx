@@ -18,14 +18,14 @@ import { CountryFlag } from "@/components/inventory/country-flag"
 import { dailyMovementToClient } from "@/lib/serialize-inventory"
 import { Button } from "@/components/ui/button"
 import { ReportMovementsBlock } from "./report-client-blocks"
-import { formatLocaleDateTime, formatLocaleTime } from "@/lib/locale-display"
+import { formatDateTimeDmy, formatLocaleTime } from "@/lib/locale-display"
 import type { ReportPeriodParams } from "@/lib/report-period"
 
 function periodTimeCell(d: Date, showFull: boolean) {
   if (showFull) {
     return (
       <span dir="ltr" className="inline-block whitespace-nowrap text-xs tabular-nums">
-        {formatLocaleDateTime(d, { dateStyle: "short", timeStyle: "short" })}
+        {formatDateTimeDmy(d)}
       </span>
     )
   }

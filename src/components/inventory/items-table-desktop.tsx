@@ -4,7 +4,8 @@ import type { ColumnDef, Table as TanStackTable } from "@tanstack/react-table"
 import { flexRender } from "@tanstack/react-table"
 import type { ItemForClient } from "@/lib/serialize-inventory"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { itemsTableColumnClass } from "@/components/inventory/items-table-layout"
+import { cn } from "@/lib/utils"
+import { ITEMS_TABLE_MIN_WIDTH, itemsTableColumnClass } from "@/components/inventory/items-table-layout"
 
 type ItemsTableDesktopProps = {
   table: TanStackTable<ItemForClient>
@@ -13,7 +14,7 @@ type ItemsTableDesktopProps = {
 
 export function ItemsTableDesktop({ table, columns }: ItemsTableDesktopProps) {
   return (
-    <Table className="table-fixed">
+    <Table className={cn("w-full", ITEMS_TABLE_MIN_WIDTH, "md:min-w-0 md:table-fixed")}>
       <TableHeader>
         {table.getHeaderGroups().map((hg) => (
           <TableRow key={hg.id}>

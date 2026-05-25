@@ -14,7 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ClipboardList } from "lucide-react"
 import { buildItemsTableColumns } from "@/components/inventory/items-table-columns"
 import { ItemsTableDesktop } from "@/components/inventory/items-table-desktop"
-import { ItemMobileCard } from "@/components/inventory/items-mobile-card"
 import { ItemsTablePagination } from "@/components/inventory/items-table-pagination"
 
 const pageSize = 8
@@ -49,25 +48,23 @@ export function ItemsDataTable({
     initialState: { pagination: { pageIndex: 0, pageSize } },
   })
 
-  const pageItems = table.getRowModel().rows.map((r) => r.original)
-
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3">
-        <div className="min-w-0">
+      <div className="flex flex-col flex-wrap items-stretch justify-between gap-3 sm:flex-row sm:items-end">
+        <div className="min-w-0 sm:max-w-sm">
           <Label className="text-muted-foreground text-xs" htmlFor="f-name">
             فلترة الاسم
           </Label>
           <Input
             id="f-name"
-            className="mt-1.5 min-h-11"
+            className="mt-1.5"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="نص داخل اسم المادة"
           />
         </div>
-        <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 md:flex md:flex-wrap md:items-end md:justify-end">
-          <div className="min-w-0">
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+          <div>
             <Label className="text-muted-foreground text-xs" htmlFor="f-unit">
               الوحدة
             </Label>
@@ -76,7 +73,7 @@ export function ItemsDataTable({
               onValueChange={(v) => setUnitFilter(v as typeof unitFilter)}
               dir="rtl"
             >
-              <SelectTrigger id="f-unit" className="mt-1.5 min-h-11 w-full min-[400px]:w-[8.5rem]">
+              <SelectTrigger id="f-unit" className="mt-1.5 w-[8.5rem]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent dir="rtl">
@@ -87,46 +84,20 @@ export function ItemsDataTable({
               </SelectContent>
             </Select>
           </div>
-          <Button
-            type="button"
-            size="default"
-            variant="secondary"
-            asChild
-            className="min-h-11 w-full touch-manipulation gap-1.5 md:min-h-9 md:w-auto"
-          >
+          <Button type="button" size="sm" variant="secondary" asChild className="gap-1.5">
             <Link href="/operations">
-              <ClipboardList className="size-4 shrink-0" />
+              <ClipboardList className="size-3.5" />
               العمليات اليومية
             </Link>
           </Button>
-          {canManage ? (
-            <div className="flex min-[400px]:col-span-2 md:col-span-1 [&_button]:min-h-11 [&_button]:w-full md:[&_button]:w-auto">
-              <CreateItemButton />
-            </div>
-          ) : null}
+          {canManage ? <CreateItemButton /> : null}
         </div>
       </div>
 
-      {/* موبايل: بطاقات */}
-      <div className="space-y-3 md:hidden">
-        {pageItems.length > 0 ? (
-          pageItems.map((item) => (
-            <ItemMobileCard key={item.id} item={item} canManage={canManage} />
-          ))
-        ) : (
-          <p className="text-muted-foreground rounded-xl border border-dashed p-8 text-center text-sm">
-            لا تطابقات
-          </p>
-        )}
-        <ItemsTablePagination
-          table={table}
-          filteredTotal={rows.length}
-          serverPagination={serverPagination}
-        />
-      </div>
-
-      {/* سطح المكتب: جدول */}
-      <div className="wms-panel hidden overflow-x-auto p-0 md:block">
+      <div className="wms-panel overflow-x-auto overflow-y-visible p-0">
+        <p className="text-muted-foreground border-b px-3 py-2 text-[11px] md:hidden">
+          اسحب أفقياً لعرض كل الأعمدة
+        </p>
         <ItemsTableDesktop table={table} columns={columns} />
         <ItemsTablePagination
           table={table}

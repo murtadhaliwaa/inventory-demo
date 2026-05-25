@@ -2,23 +2,20 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { ColumnDef, getCoreRowModel, getPaginationRowModel, useReactTable, flexRender } from "@tanstack/react-table"
+import { getCoreRowModel, getPaginationRowModel, useReactTable } from "@tanstack/react-table"
 import type { ItemForClient } from "@/lib/serialize-inventory"
-import { formatDecimalQuantity } from "@/lib/format"
 import type { ItemUnit } from "@/lib/item-unit"
-import { itemUnitLabelFor, parseItemUnit } from "@/lib/item-unit"
-import { CreateItemButton, DeleteItemButton, EditItemButton } from "@/components/inventory/item-form-dialogs"
+import { parseItemUnit } from "@/lib/item-unit"
+import { CreateItemButton } from "@/components/inventory/item-form-dialogs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ClipboardList, FileBarChart } from "lucide-react"
-import {
-  ITEMS_TABLE_COLUMN_ORDER,
-  itemsTableColumnClass,
-} from "@/components/inventory/items-table-layout"
+import { ClipboardList } from "lucide-react"
+import { buildItemsTableColumns } from "@/components/inventory/items-table-columns"
+import { ItemsTableDesktop } from "@/components/inventory/items-table-desktop"
+import { ItemMobileCard } from "@/components/inventory/items-mobile-card"
+import { ItemsTablePagination } from "@/components/inventory/items-table-pagination"
 
 const pageSize = 8
 
@@ -42,89 +39,7 @@ export function ItemsDataTable({
     })
   }, [src, q, unitFilter])
 
-  const columns: ColumnDef<ItemForClient>[] = useMemo(() => {
-    const base: ColumnDef<ItemForClient>[] = [
-      { accessorKey: "name", header: "الاسم" },
-      {
-        accessorKey: "unit",
-        header: "الوحدة",
-        cell: (ctx) => {
-          const raw = ctx.getValue() as string
-          return (
-            <Badge variant="outline" className="text-xs">
-              {itemUnitLabelFor(raw)}
-            </Badge>
-          )
-        },
-      },
-      {
-        id: "bal",
-        header: "الرصيد",
-        cell: (ctx) => {
-          const r = ctx.row.original
-          return (
-            <span className="font-mono text-sm tabular-nums" dir="ltr">
-              {formatDecimalQuantity(r.currentQuantity)}
-            </span>
-          )
-        },
-      },
-      {
-        id: "safety",
-        header: "حد الإنذار",
-        cell: (ctx) => {
-          const r = ctx.row.original
-          return (
-            <span className="text-muted-foreground font-mono text-sm tabular-nums" dir="ltr">
-              {formatDecimalQuantity(r.minThreshold)}
-            </span>
-          )
-        },
-      },
-      {
-        id: "report",
-        header: "تقرير",
-        cell: (ctx) => {
-          const r = ctx.row.original
-          return (
-            <div className="flex justify-center">
-              <Button type="button" size="sm" variant="outline" asChild className="gap-1.5">
-                <Link href={`/reports/items/${r.id}`}>
-                  <FileBarChart className="size-3.5" aria-hidden />
-                  تقرير
-                </Link>
-              </Button>
-            </div>
-          )
-        },
-      },
-      {
-        id: "ops",
-        header: "إدارة",
-        cell: (ctx) => {
-          const r = ctx.row.original
-          return (
-            <div className="flex flex-row items-center justify-center gap-1.5">
-              <EditItemButton item={r} canManage={canManage} />
-              <DeleteItemButton nameDisplay={r.name} itemId={r.id} canManage={canManage} />
-            </div>
-          )
-        },
-        enableHiding: false,
-      },
-    ]
-
-    const byId = Object.fromEntries(
-      base.map((c) => {
-        const key = c.id ?? ("accessorKey" in c ? String(c.accessorKey) : "")
-        return [key, c]
-      })
-    )
-    const order = canManage
-      ? ITEMS_TABLE_COLUMN_ORDER
-      : ITEMS_TABLE_COLUMN_ORDER.filter((id) => id !== "ops")
-    return order.map((id) => byId[id]).filter(Boolean) as ColumnDef<ItemForClient>[]
-  }, [canManage])
+  const columns = useMemo(() => buildItemsTableColumns(canManage), [canManage])
 
   const table = useReactTable({
     data: rows,
@@ -134,23 +49,25 @@ export function ItemsDataTable({
     initialState: { pagination: { pageIndex: 0, pageSize } },
   })
 
+  const pageItems = table.getRowModel().rows.map((r) => r.original)
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col flex-wrap items-stretch justify-between gap-3 sm:flex-row sm:items-end">
-        <div className="min-w-0 sm:max-w-sm">
+      <div className="flex flex-col gap-3">
+        <div className="min-w-0">
           <Label className="text-muted-foreground text-xs" htmlFor="f-name">
             فلترة الاسم
           </Label>
           <Input
             id="f-name"
-            className="mt-1.5"
+            className="mt-1.5 min-h-11"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="نص داخل اسم المادة"
           />
         </div>
-        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
-          <div>
+        <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 md:flex md:flex-wrap md:items-end md:justify-end">
+          <div className="min-w-0">
             <Label className="text-muted-foreground text-xs" htmlFor="f-unit">
               الوحدة
             </Label>
@@ -159,7 +76,7 @@ export function ItemsDataTable({
               onValueChange={(v) => setUnitFilter(v as typeof unitFilter)}
               dir="rtl"
             >
-              <SelectTrigger id="f-unit" className="mt-1.5 w-[8.5rem]">
+              <SelectTrigger id="f-unit" className="mt-1.5 min-h-11 w-full min-[400px]:w-[8.5rem]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent dir="rtl">
@@ -170,101 +87,52 @@ export function ItemsDataTable({
               </SelectContent>
             </Select>
           </div>
-          <Button type="button" size="sm" variant="secondary" asChild className="gap-1.5">
+          <Button
+            type="button"
+            size="default"
+            variant="secondary"
+            asChild
+            className="min-h-11 w-full touch-manipulation gap-1.5 md:min-h-9 md:w-auto"
+          >
             <Link href="/operations">
-              <ClipboardList className="size-3.5" />
+              <ClipboardList className="size-4 shrink-0" />
               العمليات اليومية
             </Link>
           </Button>
-          {canManage ? <CreateItemButton /> : null}
+          {canManage ? (
+            <div className="flex min-[400px]:col-span-2 md:col-span-1 [&_button]:min-h-11 [&_button]:w-full md:[&_button]:w-auto">
+              <CreateItemButton />
+            </div>
+          ) : null}
         </div>
       </div>
-      <div className="wms-panel overflow-x-auto overflow-y-visible p-0">
-        <Table className="table-fixed">
-          <TableHeader>
-            {table.getHeaderGroups().map((hg) => (
-              <TableRow key={hg.id}>
-                {hg.headers.map((h) => {
-                  const id = h.column.id
-                  return (
-                    <TableHead
-                      key={h.id}
-                      className={itemsTableColumnClass(id, "text-xs font-medium align-middle")}
-                    >
-                      {h.isPlaceholder
-                        ? null
-                        : flexRender(h.column.columnDef.header, h.getContext())}
-                    </TableHead>
-                  )
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.length > 0 ? (
-              table.getRowModel().rows.map((r) => (
-                <TableRow key={r.id} data-state={r.getIsSelected() && "selected"}>
-                  {r.getVisibleCells().map((c) => {
-                    const id = c.column.id
-                    return (
-                      <TableCell
-                        key={c.id}
-                        className={itemsTableColumnClass(id, "align-middle text-sm")}
-                      >
-                        {flexRender(c.column.columnDef.cell, c.getContext())}
-                      </TableCell>
-                    )
-                  })}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-20 text-center text-sm text-muted-foreground"
-                >
-                  لا تطابقات
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-        <div className="text-muted-foreground border-t px-2 py-2.5 text-xs sm:flex sm:items-center sm:justify-between">
-          <div>
-            {serverPagination ? (
-              <>
-                عرض الجدول: {table.getRowModel().rows.length} / {rows.length} في هذه الصفحة — من أصل{" "}
-                {serverPagination.total} مادة (صفحة {serverPagination.page} / {serverPagination.totalPages})
-              </>
-            ) : (
-              <>
-                عرض {table.getRowModel().rows.length} / {rows.length} نتائج
-              </>
-            )}
-          </div>
-          <div className="mt-2 flex gap-2 sm:mt-0">
-            <Button
-              type="button"
-              size="default"
-              variant="outline"
-              className="min-h-10 touch-manipulation sm:min-h-9"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              السابقة
-            </Button>
-            <Button
-              type="button"
-              size="default"
-              variant="outline"
-              className="min-h-10 touch-manipulation sm:min-h-9"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              التالية
-            </Button>
-          </div>
-        </div>
+
+      {/* موبايل: بطاقات */}
+      <div className="space-y-3 md:hidden">
+        {pageItems.length > 0 ? (
+          pageItems.map((item) => (
+            <ItemMobileCard key={item.id} item={item} canManage={canManage} />
+          ))
+        ) : (
+          <p className="text-muted-foreground rounded-xl border border-dashed p-8 text-center text-sm">
+            لا تطابقات
+          </p>
+        )}
+        <ItemsTablePagination
+          table={table}
+          filteredTotal={rows.length}
+          serverPagination={serverPagination}
+        />
+      </div>
+
+      {/* سطح المكتب: جدول */}
+      <div className="wms-panel hidden overflow-x-auto p-0 md:block">
+        <ItemsTableDesktop table={table} columns={columns} />
+        <ItemsTablePagination
+          table={table}
+          filteredTotal={rows.length}
+          serverPagination={serverPagination}
+        />
       </div>
     </div>
   )

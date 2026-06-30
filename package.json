@@ -13,6 +13,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:clear": "tsx prisma/seed.ts --clear",
     "db:seed:reset": "tsx prisma/seed.ts --clear",
+    "setup:admins": "tsx scripts/setup-admins.ts",
     "test": "vitest run",
     "postinstall": "prisma generate"
   },

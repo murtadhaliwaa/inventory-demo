@@ -68,6 +68,8 @@ model Transaction {
   @@index([itemId, createdAt])
   @@index([createdAt])
   @@index([createdAt, id])
+  @@index([createdAt, type])
+  @@index([itemId, type, createdAt])
   @@index([supplierId])
   @@map("transactions")
 }

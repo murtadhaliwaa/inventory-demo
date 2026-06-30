@@ -1,12 +1,13 @@
 import { Suspense } from "react"
 import { notFound, redirect } from "next/navigation"
-import { db } from "@/lib/db"
-import { requireUser } from "@/lib/auth/require-user"
+import { getItemPeriodReport } from "@/lib/actions/inventory"
 import {
   reportSearchParams,
   resolveReportPeriod,
   toReportPeriodFilterInitial,
+  type ResolvedReportPeriod,
 } from "@/lib/report-period"
+import type { ReportPeriodParams } from "@/lib/report-period"
 import { reportUrlNeedsCanonicalSync } from "@/lib/report-url"
 import { PageHeader } from "@/components/layout/page-header"
 import { ReportBodySkeleton } from "@/components/reports/report-skeleton"
@@ -16,12 +17,50 @@ import {
 } from "./item-report-client-blocks"
 import { ItemReportBody } from "./item-report-body"
 
-async function getItemReportTitle(itemId: string) {
-  await requireUser()
-  return db.item.findUnique({
-    where: { id: itemId },
-    select: { name: true },
-  })
+type ItemReportPageContentProps = {
+  itemId: string
+  period: ResolvedReportPeriod
+  reportParams: ReportPeriodParams & { movementsPage: number }
+  hrefBase: string
+  pdfParams: ReportPeriodParams
+  canonical: string
+}
+
+async function ItemReportPageContent({
+  itemId,
+  period,
+  reportParams,
+  hrefBase,
+  pdfParams,
+  canonical,
+}: ItemReportPageContentProps) {
+  const report = await getItemPeriodReport(itemId, reportParams)
+  if (!report) notFound()
+
+  return (
+    <>
+      <PageHeader
+        title={`تقرير: ${report.item.name}`}
+        description={`${period.titleLabel} · ${period.rangeLabel} · ${period.rangeNumeric}`}
+      >
+        <ItemReportPdfExportBlock itemId={itemId} periodParams={pdfParams} />
+      </PageHeader>
+
+      <ItemReportFiltersBlock
+        itemId={itemId}
+        initial={toReportPeriodFilterInitial(period)}
+        activeQuery={canonical}
+      />
+
+      <ItemReportBody
+        itemId={itemId}
+        period={period}
+        reportParams={reportParams}
+        hrefBase={hrefBase}
+        preloaded={report}
+      />
+    </>
+  )
 }
 
 export default async function ItemReportPage({
@@ -33,9 +72,6 @@ export default async function ItemReportPage({
 }) {
   const { itemId } = await params
   const sp = await searchParams
-  const meta = await getItemReportTitle(itemId)
-  if (!meta) notFound()
-
   const mp = Math.max(1, parseInt(sp.mp ?? "1", 10) || 1)
   const period = resolveReportPeriod(sp)
   const reportParams = {
@@ -62,21 +98,15 @@ export default async function ItemReportPage({
 
   return (
     <div className="min-w-0 max-w-full space-y-8">
-      <PageHeader
-        title={`تقرير: ${meta.name}`}
-        description={`${period.titleLabel} · ${period.rangeLabel} · ${period.rangeNumeric}`}
-      >
-        <ItemReportPdfExportBlock itemId={itemId} periodParams={pdfParams} />
-      </PageHeader>
-
-      <ItemReportFiltersBlock
-        itemId={itemId}
-        initial={toReportPeriodFilterInitial(period)}
-        activeQuery={canonical}
-      />
-
       <Suspense fallback={<ReportBodySkeleton />}>
-        <ItemReportBody itemId={itemId} period={period} reportParams={reportParams} hrefBase={hrefBase} />
+        <ItemReportPageContent
+          itemId={itemId}
+          period={period}
+          reportParams={reportParams}
+          hrefBase={hrefBase}
+          pdfParams={pdfParams}
+          canonical={canonical}
+        />
       </Suspense>
     </div>
   )

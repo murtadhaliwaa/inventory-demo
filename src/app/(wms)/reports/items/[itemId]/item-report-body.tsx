@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { getItemPeriodReport } from "@/lib/actions/inventory"
+import { getItemPeriodReport, type ItemPeriodReport } from "@/lib/actions/inventory"
 import { formatDecimalQuantity } from "@/lib/format"
 import { itemUnitLabelFor } from "@/lib/item-unit"
 import { reportSearchParams, type ResolvedReportPeriod } from "@/lib/report-period"
@@ -41,10 +41,17 @@ type ItemReportBodyProps = {
   period: ResolvedReportPeriod
   reportParams: ReportPeriodParams & { movementsPage: number }
   hrefBase: string
+  preloaded?: ItemPeriodReport
 }
 
-export async function ItemReportBody({ itemId, period, reportParams, hrefBase }: ItemReportBodyProps) {
-  const r = await getItemPeriodReport(itemId, reportParams)
+export async function ItemReportBody({
+  itemId,
+  period,
+  reportParams,
+  hrefBase,
+  preloaded,
+}: ItemReportBodyProps) {
+  const r = preloaded ?? (await getItemPeriodReport(itemId, reportParams))
   if (!r) notFound()
 
   const item = r.item

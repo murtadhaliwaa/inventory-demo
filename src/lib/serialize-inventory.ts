@@ -10,7 +10,9 @@ export type ItemForClient = {
   unit: string
 }
 
-export function itemToClient(i: Item): ItemForClient {
+type ItemLike = Pick<Item, "id" | "name" | "currentQuantity" | "minThreshold" | "unit">
+
+export function itemToClient(i: ItemLike): ItemForClient {
   return {
     id: i.id,
     name: i.name,
@@ -27,7 +29,9 @@ export type SupplierForClient = {
   notes: string | null
 }
 
-export function supplierToClient(s: Supplier): SupplierForClient {
+type SupplierLike = Pick<Supplier, "id" | "name" | "countryCode" | "notes">
+
+export function supplierToClient(s: SupplierLike): SupplierForClient {
   return {
     id: s.id,
     name: s.name,

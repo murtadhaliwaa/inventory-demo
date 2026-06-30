@@ -60,9 +60,24 @@ function clampPageSize(n: number) {
 export async function listItemsPaged(opts?: { page?: number; pageSize?: number }): Promise<PagedResult<Item>> {
   await requireUser()
   const pageSize = clampPageSize(opts?.pageSize ?? DEFAULT_PAGE_SIZE)
-  const total = await db.item.count()
+  const requestedPage = clampPage(opts?.page ?? 1)
+
+  const [total, initialRows] = await Promise.all([
+    db.item.count(),
+    db.item.findMany({
+      orderBy: { name: "asc" },
+      skip: (requestedPage - 1) * pageSize,
+      take: pageSize,
+    }),
+  ])
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  const page = Math.min(clampPage(opts?.page ?? 1), totalPages)
+  const page = Math.min(requestedPage, totalPages)
+
+  if (page === requestedPage) {
+    return { rows: initialRows, total, page, pageSize, totalPages }
+  }
+
   const rows = await db.item.findMany({
     orderBy: { name: "asc" },
     skip: (page - 1) * pageSize,
@@ -150,8 +165,22 @@ const OPS_SELECT_LIMIT = 3000
 export async function getOperationsPageData() {
   await requireUser()
   const [items, suppliers] = await Promise.all([
-    db.item.findMany({ orderBy: { name: "asc" }, take: OPS_SELECT_LIMIT }),
-    db.supplier.findMany({ orderBy: { name: "asc" }, take: OPS_SELECT_LIMIT }),
+    db.item.findMany({
+      orderBy: { name: "asc" },
+      take: OPS_SELECT_LIMIT,
+      select: {
+        id: true,
+        name: true,
+        currentQuantity: true,
+        minThreshold: true,
+        unit: true,
+      },
+    }),
+    db.supplier.findMany({
+      orderBy: { name: "asc" },
+      take: OPS_SELECT_LIMIT,
+      select: { id: true, name: true, countryCode: true, notes: true },
+    }),
   ])
   return { items, suppliers }
 }
@@ -450,7 +479,17 @@ function startEndOfLocalDay(d = new Date()) {
 export async function getDashboardData() {
   await requireUser()
   const { start, end } = startEndOfLocalDay()
-  const [totalSkus, lowStockRows, recentTransactions, todayTransactions, supplierCount] = await Promise.all([
+  const todayWhere = { createdAt: { gte: start, lte: end } }
+
+  const [
+    totalSkus,
+    lowStockRows,
+    recentTransactions,
+    todayMovementsCount,
+    todayAdds,
+    todayWithdraws,
+    supplierCount,
+  ] = await Promise.all([
     db.item.count(),
     db.$queryRaw<
       Array<{
@@ -480,12 +519,12 @@ export async function getDashboardData() {
         supplier: { select: { id: true, name: true, countryCode: true } },
       },
     }),
-    db.transaction.findMany({
-      where: { createdAt: { gte: start, lte: end } },
-      select: { type: true },
-    }),
+    db.transaction.count({ where: todayWhere }),
+    db.transaction.count({ where: { ...todayWhere, type: TransactionType.ADD } }),
+    db.transaction.count({ where: { ...todayWhere, type: TransactionType.WITHDRAW } }),
     db.supplier.count(),
   ])
+
   const lowStock = lowStockRows.map((r) => ({
     id: r.id,
     name: r.name,
@@ -495,10 +534,7 @@ export async function getDashboardData() {
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   }))
-  const todayAdds = todayTransactions.filter((t) => t.type === TransactionType.ADD).length
-  const todayWithdraws = todayTransactions.filter(
-    (t) => t.type === TransactionType.WITHDRAW
-  ).length
+
   return {
     recentTransactions,
     lowStock,
@@ -506,13 +542,14 @@ export async function getDashboardData() {
     supplierCount,
     todayAdds,
     todayWithdraws,
-    todayMovementsCount: todayTransactions.length,
+    todayMovementsCount,
   }
 }
 
 export type DashboardData = Awaited<ReturnType<typeof getDashboardData>>
 
 const DAILY_SUMMARY_CAP = 500
+const PDF_EXPORT_CAP = 2000
 
 const dailyTxSelect = {
   id: true,
@@ -598,26 +635,19 @@ async function balancesAtPeriodEnd(periodEnd: Date): Promise<PeriodItemBalance[]
   })
 }
 
-/** رصيد مادة واحدة عند لحظة زمنية (نهاية فترة) */
-async function balanceAtPeriodEndForItem(
-  itemId: string,
-  periodEnd: Date
-): Promise<PeriodItemBalance | null> {
-  const item = await db.item.findUnique({ where: { id: itemId } })
-  if (!item) return null
+type ItemBalanceSource = {
+  id: string
+  name: string
+  currentQuantity: Prisma.Decimal
+  minThreshold: Prisma.Decimal
+  unit: string
+  createdAt: Date
+  updatedAt: Date
+}
 
+async function queryDeltaAfterPeriodEnd(itemId: string, periodEnd: Date): Promise<Prisma.Decimal> {
   const now = new Date()
-  if (periodEnd >= now) {
-    return {
-      id: item.id,
-      name: item.name,
-      currentQuantity: item.currentQuantity,
-      minThreshold: item.minThreshold,
-      unit: item.unit,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-    }
-  }
+  if (periodEnd >= now) return new Prisma.Decimal(0)
 
   const rows = await db.$queryRaw<Array<{ delta: Prisma.Decimal | null }>>`
     SELECT COALESCE(
@@ -632,8 +662,10 @@ async function balanceAtPeriodEndForItem(
     FROM transactions
     WHERE item_id = ${itemId} AND created_at > ${periodEnd}
   `
-  const after = new Prisma.Decimal(rows[0]?.delta?.toString() ?? "0")
-  const atEnd = new Prisma.Decimal(item.currentQuantity.toString()).sub(after)
+  return new Prisma.Decimal(rows[0]?.delta?.toString() ?? "0")
+}
+
+function mapItemBalanceAtEnd(item: ItemBalanceSource, atEnd: Prisma.Decimal): PeriodItemBalance {
   return {
     id: item.id,
     name: item.name,
@@ -644,6 +676,32 @@ async function balanceAtPeriodEndForItem(
     updatedAt: item.updatedAt,
   }
 }
+
+/** رصيد مادة واحدة عند لحظة زمنية (نهاية فترة) */
+async function balanceAtPeriodEndForItem(
+  itemId: string,
+  periodEnd: Date,
+  prefetched?: ItemBalanceSource
+): Promise<PeriodItemBalance | null> {
+  const item =
+    prefetched ??
+    (await db.item.findUnique({
+      where: { id: itemId },
+      select: itemBalanceSelect,
+    }))
+  if (!item) return null
+
+  const now = new Date()
+  if (periodEnd >= now) {
+    return mapItemBalanceAtEnd(item, item.currentQuantity)
+  }
+
+  const delta = await queryDeltaAfterPeriodEnd(itemId, periodEnd)
+  const atEnd = new Prisma.Decimal(item.currentQuantity.toString()).sub(delta)
+  return mapItemBalanceAtEnd(item, atEnd)
+}
+
+export type ItemPeriodReport = NonNullable<Awaited<ReturnType<typeof getItemPeriodReport>>>
 
 export async function getItemPeriodReport(
   itemId: string,
@@ -686,8 +744,8 @@ export async function getItemPeriodReport(
     addSum,
     withdrawSum,
   ] = await Promise.all([
-    balanceAtPeriodEndForItem(itemId, openingAt),
-    balanceAtPeriodEndForItem(itemId, end),
+    balanceAtPeriodEndForItem(itemId, openingAt, item),
+    balanceAtPeriodEndForItem(itemId, end, item),
     db.transaction.count({ where: rangeWhere }),
     db.transaction.findMany({
       where: rangeWhere,
@@ -849,11 +907,13 @@ export async function getDailyReportPdfPayload(
       where: { ...rangeWhere, type: TransactionType.ADD },
       select: dailyTxSelect,
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: PDF_EXPORT_CAP,
     }),
     db.transaction.findMany({
       where: { ...rangeWhere, type: TransactionType.WITHDRAW },
       select: dailyTxSelect,
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: PDF_EXPORT_CAP,
     }),
     balancesAtPeriodEnd(end),
   ])
@@ -905,14 +965,16 @@ export async function getItemReportPdfPayload(
         where: { ...rangeWhere, type: TransactionType.ADD },
         select: dailyTxSelect,
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        take: PDF_EXPORT_CAP,
       }),
       db.transaction.findMany({
         where: { ...rangeWhere, type: TransactionType.WITHDRAW },
         select: dailyTxSelect,
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        take: PDF_EXPORT_CAP,
       }),
-      balanceAtPeriodEndForItem(itemId, openingAt),
-      balanceAtPeriodEndForItem(itemId, end),
+      balanceAtPeriodEndForItem(itemId, openingAt, item),
+      balanceAtPeriodEndForItem(itemId, end, item),
       db.transaction.aggregate({
         where: { ...rangeWhere, type: TransactionType.ADD },
         _sum: { quantity: true },

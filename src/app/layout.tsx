@@ -8,7 +8,7 @@ const baloo = Baloo_Bhaijaan_2({
   subsets: ["arabic", "latin"],
   variable: "--font-baloo",
   display: "swap",
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
 })
 
 const geistMono = Geist_Mono({

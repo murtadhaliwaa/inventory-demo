@@ -9,6 +9,7 @@ import {
   ClipboardList,
   Truck,
   FileBarChart,
+  ShieldCheck,
   X,
 } from "lucide-react"
 import Image from "next/image"
@@ -46,7 +47,7 @@ const items = [
   },
 ]
 
-export function AppShellSidebar() {
+export function AppShellSidebar({ showAudit = false }: { showAudit?: boolean }) {
   const path = usePathname()
   const { isMobile, setOpenMobile } = useSidebar()
 
@@ -138,6 +139,38 @@ export function AppShellSidebar() {
                   </SidebarMenuItem>
                 )
               })}
+              {showAudit ? (
+                <SidebarMenuItem key="/audit">
+                  <SidebarMenuButton
+                    asChild
+                    size="lg"
+                    isActive={path === "/audit"}
+                    className={cn(
+                      "touch-manipulation justify-start rounded-xl py-3 transition-[background-color,box-shadow,border-color] group-data-[collapsible=icon]:py-2!",
+                      path === "/audit" && "shadow-[var(--wms-surface-elevated)]"
+                    )}
+                  >
+                    <Link
+                      href="/audit"
+                      prefetch
+                      aria-label="سجل التدقيق"
+                      onClick={() => {
+                        if (isMobile) setOpenMobile(false)
+                      }}
+                      className={cn(
+                        "flex min-h-10 w-full min-w-0 flex-row items-center justify-start gap-2 rounded-xl py-1 text-start sm:min-h-0",
+                        path === "/audit" &&
+                          "border-s-2 border-primary bg-sidebar-accent/90 text-sidebar-accent-foreground"
+                      )}
+                    >
+                      <ShieldCheck className="size-4 shrink-0" aria-hidden />
+                      <span className="min-w-0 flex-1 truncate group-data-[collapsible=icon]:sr-only">
+                        سجل التدقيق
+                      </span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : null}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

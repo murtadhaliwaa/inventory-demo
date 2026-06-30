@@ -4,6 +4,8 @@ import { ThemeSwitcher } from "@/components/layout/theme-switcher"
 import { RealtimeRefresh } from "@/components/inventory/realtime-refresh"
 import { Separator } from "@/components/ui/separator"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { getServerUser } from "@/lib/auth/require-user"
+import { canViewAuditLog } from "@/lib/auth/roles"
 
 /** لا يُجمّد المحتوى أثناء `next build` لأن الصفحات تستدعي `requireUser` وقاعدة البيانات */
 export const dynamic = "force-dynamic"
@@ -11,10 +13,13 @@ export const dynamic = "force-dynamic"
 /**
  * تخطيط التطبيق بشريط جانبي يمين (RTL) + تحديث لحظي عند توفر Realtime
  */
-export default function WmsLayout({ children }: { children: React.ReactNode }) {
+export default async function WmsLayout({ children }: { children: React.ReactNode }) {
+  const user = await getServerUser()
+  const showAudit = canViewAuditLog(user)
+
   return (
     <SidebarProvider>
-      <AppShellSidebar />
+      <AppShellSidebar showAudit={showAudit} />
       <SidebarInset>
         <header
           className="border-border/60 bg-card/75 supports-[backdrop-filter]:bg-card/60 sticky top-0 z-20 flex min-h-14 min-w-0 max-w-full shrink-0 items-center justify-between gap-2 overflow-x-clip border-b px-2 py-2 shadow-[var(--wms-surface-elevated)] backdrop-blur-md max-md:pt-[max(0.5rem,env(safe-area-inset-top,0px))] sm:gap-3 sm:px-4 sm:py-0"

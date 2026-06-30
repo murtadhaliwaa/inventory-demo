@@ -2,6 +2,7 @@
 
 import { useRef, useState, type CSSProperties } from "react"
 import { flushSync } from "react-dom"
+import { toast } from "sonner"
 import { FileDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getDailyReportPdfPayload } from "@/lib/actions/inventory"
@@ -46,6 +47,13 @@ export function ExportDailyPdfButton(props: ExportDailyPdfButtonProps) {
         import("jspdf"),
         getDailyReportPdfPayload(props.periodParams),
       ])
+
+      if (data.addsTruncated || data.withdrawsTruncated) {
+        toast.warning(
+          `تم اقتطاع التقرير: يُصدَّر أول ${2000} حركة فقط. راجع التقرير على الشاشة للتفاصيل الكاملة.`,
+          { duration: 8000 }
+        )
+      }
 
       flushSync(() => {
         setPreview(data)

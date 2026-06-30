@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache"
 import type { Item } from "@/generated/prisma"
 import { Prisma, TransactionType } from "@/generated/prisma"
 import { requireUser } from "@/lib/auth/require-user"
+import { requireAuditViewer, requireDeleteUser, requireManageUser } from "@/lib/auth/guards"
+import { logAudit, listRecentAuditLogs } from "@/lib/audit-log"
 import { db } from "@/lib/db"
 import { formatDecimalQuantity } from "@/lib/format"
 import type { DailyPdfPayload } from "@/lib/daily-report-pdf-types"
@@ -24,7 +26,7 @@ import {
   transactionWithdrawSchema,
 } from "@/lib/validations/inventory"
 
-const paths = ["/", "/items", "/reports/daily", "/reports/items", "/operations", "/suppliers"] as const
+const paths = ["/", "/items", "/reports/daily", "/reports/items", "/operations", "/suppliers", "/audit"] as const
 
 function revalidateApp() {
   for (const p of paths) revalidatePath(p)
@@ -32,6 +34,10 @@ function revalidateApp() {
 
 function dec(n: number | string) {
   return new Prisma.Decimal(n)
+}
+
+async function lockItemForUpdate(tx: Prisma.TransactionClient, itemId: string) {
+  await tx.$queryRaw`SELECT id FROM items WHERE id = ${itemId} FOR UPDATE`
 }
 
 type ActionResult = { success: true } | { success: false; error: string }
@@ -54,6 +60,11 @@ function clampPage(n: number) {
 function clampPageSize(n: number) {
   const p = Number.isFinite(n) ? Math.floor(n) : DEFAULT_PAGE_SIZE
   return Math.min(MAX_PAGE_SIZE, Math.max(10, p))
+}
+
+export async function listRecentAuditLogsForAdmin(limit = 100) {
+  await requireAuditViewer()
+  return listRecentAuditLogs(limit)
 }
 
 /** ترقيم صفحات للمواد (اسم تصاعدي) — يقلل حمل الخادم مع توسع الجدول */
@@ -187,19 +198,27 @@ export async function getOperationsPageData() {
 
 export async function createSupplier(f: FormData | Record<string, unknown>) {
   try {
-    await requireUser()
+    const user = await requireManageUser()
     const data = f instanceof FormData ? Object.fromEntries(f.entries()) : f
     const parsed = supplierCreateSchema.safeParse(data)
     if (!parsed.success) {
       return { success: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" }
     }
     const notes = parsed.data.notes?.trim()
-    await db.supplier.create({
+    const created = await db.supplier.create({
       data: {
         name: parsed.data.name.trim(),
         countryCode: parsed.data.countryCode,
         notes: notes && notes.length > 0 ? notes : null,
       },
+    })
+    await logAudit({
+      userId: user.id,
+      userEmail: user.email,
+      action: "SUPPLIER_CREATE",
+      entityType: "supplier",
+      entityId: created.id,
+      details: { name: created.name },
     })
     revalidateApp()
     return { success: true } satisfies ActionResult
@@ -211,7 +230,7 @@ export async function createSupplier(f: FormData | Record<string, unknown>) {
 
 export async function updateSupplier(f: FormData | Record<string, unknown>) {
   try {
-    await requireUser()
+    const user = await requireManageUser()
     const data = f instanceof FormData ? Object.fromEntries(f.entries()) : f
     const parsed = supplierUpdateSchema.safeParse(data)
     if (!parsed.success) {
@@ -226,6 +245,14 @@ export async function updateSupplier(f: FormData | Record<string, unknown>) {
         notes: notes && notes.length > 0 ? notes : null,
       },
     })
+    await logAudit({
+      userId: user.id,
+      userEmail: user.email,
+      action: "SUPPLIER_UPDATE",
+      entityType: "supplier",
+      entityId: parsed.data.id,
+      details: { name: parsed.data.name.trim() },
+    })
     revalidateApp()
     return { success: true } satisfies ActionResult
   } catch (e) {
@@ -236,13 +263,20 @@ export async function updateSupplier(f: FormData | Record<string, unknown>) {
 
 export async function deleteSupplier(f: FormData | Record<string, unknown>) {
   try {
-    await requireUser()
+    const user = await requireDeleteUser()
     const data = f instanceof FormData ? Object.fromEntries(f.entries()) : f
     const parsed = supplierDeleteSchema.safeParse(data)
     if (!parsed.success) {
       return { success: false, error: "مُعرف حذف غير صالح" }
     }
     await db.supplier.delete({ where: { id: parsed.data.id } })
+    await logAudit({
+      userId: user.id,
+      userEmail: user.email,
+      action: "SUPPLIER_DELETE",
+      entityType: "supplier",
+      entityId: parsed.data.id,
+    })
     revalidateApp()
     return { success: true } satisfies ActionResult
   } catch (e) {
@@ -253,7 +287,7 @@ export async function deleteSupplier(f: FormData | Record<string, unknown>) {
 
 export async function createItem(f: FormData | Record<string, unknown>) {
   try {
-    await requireUser()
+    const user = await requireManageUser()
     const data =
       f instanceof FormData
         ? Object.fromEntries(f.entries())
@@ -264,6 +298,7 @@ export async function createItem(f: FormData | Record<string, unknown>) {
     }
     const { name, minThreshold, unit, currentQuantity } = parsed.data
     const opening = dec(currentQuantity)
+    let createdId = ""
 
     await db.$transaction(async (tx) => {
       const item = await tx.item.create({
@@ -274,6 +309,7 @@ export async function createItem(f: FormData | Record<string, unknown>) {
           currentQuantity: opening,
         },
       })
+      createdId = item.id
       if (currentQuantity > 0) {
         await tx.transaction.create({
           data: {
@@ -286,6 +322,14 @@ export async function createItem(f: FormData | Record<string, unknown>) {
         })
       }
     })
+    await logAudit({
+      userId: user.id,
+      userEmail: user.email,
+      action: "ITEM_CREATE",
+      entityType: "item",
+      entityId: createdId,
+      details: { name, unit, openingQuantity: String(currentQuantity) },
+    })
     revalidateApp()
     return { success: true } satisfies ActionResult
   } catch (e) {
@@ -296,7 +340,7 @@ export async function createItem(f: FormData | Record<string, unknown>) {
 
 export async function updateItem(f: FormData | Record<string, unknown>) {
   try {
-    await requireUser()
+    const user = await requireManageUser()
     const data = f instanceof FormData ? Object.fromEntries(f.entries()) : f
     const parsed = itemUpdateSchema.safeParse(data)
     if (!parsed.success) {
@@ -311,6 +355,14 @@ export async function updateItem(f: FormData | Record<string, unknown>) {
         unit,
       },
     })
+    await logAudit({
+      userId: user.id,
+      userEmail: user.email,
+      action: "ITEM_UPDATE",
+      entityType: "item",
+      entityId: id,
+      details: { name, unit },
+    })
     revalidateApp()
     return { success: true } satisfies ActionResult
   } catch (e) {
@@ -321,7 +373,7 @@ export async function updateItem(f: FormData | Record<string, unknown>) {
 
 export async function deleteItem(f: FormData | Record<string, unknown>) {
   try {
-    await requireUser()
+    const user = await requireDeleteUser()
     const data = f instanceof FormData ? Object.fromEntries(f.entries()) : f
     const parsed = itemDeleteSchema.safeParse(data)
     if (!parsed.success) {
@@ -335,6 +387,13 @@ export async function deleteItem(f: FormData | Record<string, unknown>) {
       }
     }
     await db.item.delete({ where: { id: parsed.data.id } })
+    await logAudit({
+      userId: user.id,
+      userEmail: user.email,
+      action: "ITEM_DELETE",
+      entityType: "item",
+      entityId: parsed.data.id,
+    })
     revalidateApp()
     return { success: true } satisfies ActionResult
   } catch (e) {
@@ -350,7 +409,7 @@ export async function recordTransactionAdd(
   f: FormData | Record<string, unknown>
 ) {
   try {
-    await requireUser()
+    const user = await requireManageUser()
     const data = f instanceof FormData ? Object.fromEntries(f.entries()) : f
     const parsed = transactionAddSchema.safeParse({
       ...data,
@@ -370,6 +429,8 @@ export async function recordTransactionAdd(
     } = parsed.data
     const q = dec(quantity)
     const noteValue = !note || note === "" ? null : note
+
+    let txId = ""
 
     await db.$transaction(async (tx) => {
       let resolvedSupplierId: string | null = null
@@ -395,11 +456,12 @@ export async function recordTransactionAdd(
         throw new Error("مورد مطلوب")
       }
 
+      await lockItemForUpdate(tx, itemId)
       const item = await tx.item.findUniqueOrThrow({ where: { id: itemId } })
       const cur = new Prisma.Decimal(item.currentQuantity.toString())
       const next = cur.add(q)
 
-      await tx.transaction.create({
+      const created = await tx.transaction.create({
         data: {
           itemId,
           type: TransactionType.ADD,
@@ -408,10 +470,19 @@ export async function recordTransactionAdd(
           note: noteValue,
         },
       })
+      txId = created.id
       await tx.item.update({
         where: { id: itemId },
         data: { currentQuantity: next },
       })
+    })
+    await logAudit({
+      userId: user.id,
+      userEmail: user.email,
+      action: "TRANSACTION_ADD",
+      entityType: "transaction",
+      entityId: txId,
+      details: { itemId, quantity: String(quantity) },
     })
     revalidateApp()
     return { success: true } satisfies ActionResult
@@ -426,7 +497,7 @@ export async function recordTransactionWithdraw(
   f: FormData | Record<string, unknown>
 ) {
   try {
-    await requireUser()
+    const user = await requireManageUser()
     const data = f instanceof FormData ? Object.fromEntries(f.entries()) : f
     const parsed = transactionWithdrawSchema.safeParse({
       ...data,
@@ -439,14 +510,17 @@ export async function recordTransactionWithdraw(
     const q = dec(quantity)
     const noteValue = !note || note === "" ? null : note
 
+    let txId = ""
+
     await db.$transaction(async (tx) => {
+      await lockItemForUpdate(tx, itemId)
       const item = await tx.item.findUniqueOrThrow({ where: { id: itemId } })
       const cur = new Prisma.Decimal(item.currentQuantity.toString())
       const next = cur.sub(q)
       if (new Prisma.Decimal(next.toString()).comparedTo(0) < 0) {
         throw new Error("الكمية غير متاحة: الرصيد لن يكفي")
       }
-      await tx.transaction.create({
+      const created = await tx.transaction.create({
         data: {
           itemId,
           type: TransactionType.WITHDRAW,
@@ -455,10 +529,19 @@ export async function recordTransactionWithdraw(
           note: noteValue,
         },
       })
+      txId = created.id
       await tx.item.update({
         where: { id: itemId },
         data: { currentQuantity: next },
       })
+    })
+    await logAudit({
+      userId: user.id,
+      userEmail: user.email,
+      action: "TRANSACTION_WITHDRAW",
+      entityType: "transaction",
+      entityId: txId,
+      details: { itemId, quantity: String(quantity) },
     })
     revalidateApp()
     return { success: true } satisfies ActionResult
@@ -902,7 +985,7 @@ export async function getDailyReportPdfPayload(
   const dateLabel = `${period.titleLabel} — ${period.rangeLabel}`
   const rangeWhere = { createdAt: { gte: start, lte: end } }
 
-  const [addRows, withdrawRows, items] = await Promise.all([
+  const [addRows, withdrawRows, items, addsTotal, withdrawsTotal] = await Promise.all([
     db.transaction.findMany({
       where: { ...rangeWhere, type: TransactionType.ADD },
       select: dailyTxSelect,
@@ -916,6 +999,8 @@ export async function getDailyReportPdfPayload(
       take: PDF_EXPORT_CAP,
     }),
     balancesAtPeriodEnd(end),
+    db.transaction.count({ where: { ...rangeWhere, type: TransactionType.ADD } }),
+    db.transaction.count({ where: { ...rangeWhere, type: TransactionType.WITHDRAW } }),
   ])
 
   const timeFmt =
@@ -940,7 +1025,14 @@ export async function getDailyReportPdfPayload(
     qtyUnit: `${formatDecimalQuantity(i.currentQuantity)} ${itemUnitLabelFor(i.unit)}`,
   }))
 
-  return { dateLabel, adds, withdraws, balances }
+  return {
+    dateLabel,
+    adds,
+    withdraws,
+    balances,
+    addsTruncated: addsTotal > PDF_EXPORT_CAP,
+    withdrawsTruncated: withdrawsTotal > PDF_EXPORT_CAP,
+  }
 }
 
 /** PDF لتقرير مادة واحدة */
@@ -959,31 +1051,41 @@ export async function getItemReportPdfPayload(
   const rangeWhere = { itemId, createdAt: { gte: start, lte: end } }
   const openingAt = new Date(start.getTime() - 1)
 
-  const [addRows, withdrawRows, openingBalance, closingBalance, addSum, withdrawSum] =
-    await Promise.all([
-      db.transaction.findMany({
-        where: { ...rangeWhere, type: TransactionType.ADD },
-        select: dailyTxSelect,
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        take: PDF_EXPORT_CAP,
-      }),
-      db.transaction.findMany({
-        where: { ...rangeWhere, type: TransactionType.WITHDRAW },
-        select: dailyTxSelect,
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        take: PDF_EXPORT_CAP,
-      }),
-      balanceAtPeriodEndForItem(itemId, openingAt, item),
-      balanceAtPeriodEndForItem(itemId, end, item),
-      db.transaction.aggregate({
-        where: { ...rangeWhere, type: TransactionType.ADD },
-        _sum: { quantity: true },
-      }),
-      db.transaction.aggregate({
-        where: { ...rangeWhere, type: TransactionType.WITHDRAW },
-        _sum: { quantity: true },
-      }),
-    ])
+  const [
+    addRows,
+    withdrawRows,
+    openingBalance,
+    closingBalance,
+    addSum,
+    withdrawSum,
+    addsTotal,
+    withdrawsTotal,
+  ] = await Promise.all([
+    db.transaction.findMany({
+      where: { ...rangeWhere, type: TransactionType.ADD },
+      select: dailyTxSelect,
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: PDF_EXPORT_CAP,
+    }),
+    db.transaction.findMany({
+      where: { ...rangeWhere, type: TransactionType.WITHDRAW },
+      select: dailyTxSelect,
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: PDF_EXPORT_CAP,
+    }),
+    balanceAtPeriodEndForItem(itemId, openingAt, item),
+    balanceAtPeriodEndForItem(itemId, end, item),
+    db.transaction.aggregate({
+      where: { ...rangeWhere, type: TransactionType.ADD },
+      _sum: { quantity: true },
+    }),
+    db.transaction.aggregate({
+      where: { ...rangeWhere, type: TransactionType.WITHDRAW },
+      _sum: { quantity: true },
+    }),
+    db.transaction.count({ where: { ...rangeWhere, type: TransactionType.ADD } }),
+    db.transaction.count({ where: { ...rangeWhere, type: TransactionType.WITHDRAW } }),
+  ])
 
   const timeFmt =
     period.type === "daily"
@@ -1014,5 +1116,7 @@ export async function getItemReportPdfPayload(
       time: timeFmt(new Date(t.createdAt)),
       qtyUnit: fmtQty(t.quantity),
     })),
+    addsTruncated: addsTotal > PDF_EXPORT_CAP,
+    withdrawsTruncated: withdrawsTotal > PDF_EXPORT_CAP,
   }
 }

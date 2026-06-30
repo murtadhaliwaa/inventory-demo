@@ -45,9 +45,10 @@ import { Pencil, Plus, Trash2 } from "lucide-react"
 type Props = {
   suppliers: SupplierForClient[]
   canManage: boolean
+  canDelete?: boolean
 }
 
-export function SuppliersDataTable({ suppliers, canManage }: Props) {
+export function SuppliersDataTable({ suppliers, canManage, canDelete = false }: Props) {
   const router = useRouter()
 
   if (suppliers.length === 0) {
@@ -72,7 +73,7 @@ export function SuppliersDataTable({ suppliers, canManage }: Props) {
               <TableHead className="text-start">التاجر</TableHead>
               <TableHead className="text-start">الدولة</TableHead>
               <TableHead className="text-start">ملاحظات</TableHead>
-              {canManage ? <TableHead className="text-center">إدارة</TableHead> : null}
+              {canManage || canDelete ? <TableHead className="text-center">إدارة</TableHead> : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -96,11 +97,15 @@ export function SuppliersDataTable({ suppliers, canManage }: Props) {
                 >
                   {s.notes?.trim() ? s.notes : "—"}
                 </TableCell>
-                {canManage ? (
+                {canManage || canDelete ? (
                   <TableCell className="text-center">
                     <div className="flex items-center justify-center gap-1.5">
-                      <EditSupplierDialog supplier={s} onSaved={() => router.refresh()} />
-                      <DeleteSupplierButton supplier={s} onDone={() => router.refresh()} />
+                      {canManage ? (
+                        <EditSupplierDialog supplier={s} onSaved={() => router.refresh()} />
+                      ) : null}
+                      {canDelete ? (
+                        <DeleteSupplierButton supplier={s} onDone={() => router.refresh()} />
+                      ) : null}
                     </div>
                   </TableCell>
                 ) : null}

@@ -323,16 +323,16 @@ export function EditItemButton({ item, canManage = true }: { item: ItemForClient
 export function DeleteItemButton({
   itemId,
   nameDisplay,
-  canManage = true,
+  canDelete = false,
 }: {
   itemId: string
   nameDisplay: string
-  canManage?: boolean
+  canDelete?: boolean
 }) {
   const router = useRouter()
   const [open, set] = useState(false)
   const [p, t] = useTransition()
-  if (!canManage) return null
+  if (!canDelete) return null
   return (
     <AlertDialog open={open} onOpenChange={set}>
       <Button

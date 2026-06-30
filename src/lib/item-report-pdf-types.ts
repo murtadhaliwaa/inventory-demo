@@ -14,4 +14,6 @@ export type ItemPdfPayload = {
     qtyUnit: string
   }[]
   withdraws: { time: string; qtyUnit: string }[]
+  addsTruncated?: boolean
+  withdrawsTruncated?: boolean
 }

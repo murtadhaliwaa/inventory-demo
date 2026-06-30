@@ -21,10 +21,12 @@ const pageSize = 8
 export function ItemsDataTable({
   items: src,
   canManage = true,
+  canDelete = false,
   serverPagination,
 }: {
   items: ItemForClient[]
   canManage?: boolean
+  canDelete?: boolean
   serverPagination?: { page: number; totalPages: number; total: number; pageSize: number }
 }) {
   const [q, setQ] = useState("")
@@ -38,7 +40,10 @@ export function ItemsDataTable({
     })
   }, [src, q, unitFilter])
 
-  const columns = useMemo(() => buildItemsTableColumns(canManage), [canManage])
+  const columns = useMemo(
+    () => buildItemsTableColumns(canManage, canDelete),
+    [canManage, canDelete]
+  )
 
   const table = useReactTable({
     data: rows,

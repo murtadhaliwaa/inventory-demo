@@ -2,14 +2,14 @@ import { Suspense } from "react"
 import { getOperationsPageData } from "@/lib/actions/inventory"
 import { DailyOperationsForms } from "@/components/inventory/daily-operations-forms"
 import { PageHeader } from "@/components/layout/page-header"
-import { isInventoryAdmin } from "@/lib/auth/roles"
+import { canManageInventory } from "@/lib/auth/roles"
 import { requireUser } from "@/lib/auth/require-user"
 import { itemToClient, supplierToClient } from "@/lib/serialize-inventory"
 import { OperationsPageSkeleton } from "@/components/layout/page-skeletons"
 
 async function OperationsPageContent() {
   const user = await requireUser()
-  const canManage = isInventoryAdmin(user)
+  const canManage = canManageInventory(user)
   const { items, suppliers } = await getOperationsPageData()
   return (
     <DailyOperationsForms

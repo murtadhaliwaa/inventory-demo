@@ -73,3 +73,20 @@ model Transaction {
   @@index([supplierId])
   @@map("transactions")
 }
+
+/// سجل تدقيق: من قام بماذا ومتى
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?  @map("user_id")
+  userEmail String?  @map("user_email")
+  action    String   @db.VarChar(64)
+  entityType String  @map("entity_type") @db.VarChar(32)
+  entityId  String?  @map("entity_id")
+  details   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([userEmail])
+  @@map("audit_logs")
+}

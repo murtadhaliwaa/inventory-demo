@@ -5,13 +5,14 @@ import { ItemsDataTable } from "@/components/inventory/items-table"
 import { PageHeader } from "@/components/layout/page-header"
 import { itemToClient } from "@/lib/serialize-inventory"
 import { requireUser } from "@/lib/auth/require-user"
-import { isInventoryAdmin } from "@/lib/auth/roles"
+import { canDeleteInventory, canManageInventory } from "@/lib/auth/roles"
 import { Button } from "@/components/ui/button"
 import { TablePageSkeleton } from "@/components/layout/page-skeletons"
 
 async function ItemsPageContent({ pageRaw }: { pageRaw: number }) {
   const user = await requireUser()
-  const canManage = isInventoryAdmin(user)
+  const canManage = canManageInventory(user)
+  const canDelete = canDeleteInventory(user)
   const { rows, total, page, pageSize, totalPages } = await listItemsPaged({ page: pageRaw })
 
   return (
@@ -19,6 +20,7 @@ async function ItemsPageContent({ pageRaw }: { pageRaw: number }) {
       <ItemsDataTable
         items={rows.map(itemToClient)}
         canManage={canManage}
+        canDelete={canDelete}
         serverPagination={{ page, totalPages, total, pageSize }}
       />
       {totalPages > 1 ? (

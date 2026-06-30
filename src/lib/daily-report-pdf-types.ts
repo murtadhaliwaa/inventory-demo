@@ -11,4 +11,6 @@ export type DailyPdfPayload = {
   }[]
   withdraws: { time: string; itemName: string; qtyUnit: string }[]
   balances: { itemName: string; qtyUnit: string }[]
+  addsTruncated?: boolean
+  withdrawsTruncated?: boolean
 }

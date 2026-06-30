@@ -12,7 +12,10 @@ import { FileBarChart } from "lucide-react"
 import { ITEMS_TABLE_COLUMN_ORDER } from "@/components/inventory/items-table-layout"
 
 /** تعريف أعمدة جدول المواد (مشترك بين سطح المكتب والمنطق) */
-export function buildItemsTableColumns(canManage: boolean): ColumnDef<ItemForClient>[] {
+export function buildItemsTableColumns(
+  canManage: boolean,
+  canDelete: boolean
+): ColumnDef<ItemForClient>[] {
   const base: ColumnDef<ItemForClient>[] = [
     { accessorKey: "name", header: "الاسم" },
     {
@@ -76,7 +79,7 @@ export function buildItemsTableColumns(canManage: boolean): ColumnDef<ItemForCli
         return (
           <div className="flex flex-row items-center justify-center gap-1.5">
             <EditItemButton item={r} canManage={canManage} />
-            <DeleteItemButton nameDisplay={r.name} itemId={r.id} canManage={canManage} />
+            <DeleteItemButton nameDisplay={r.name} itemId={r.id} canDelete={canDelete} />
           </div>
         )
       },
@@ -90,7 +93,7 @@ export function buildItemsTableColumns(canManage: boolean): ColumnDef<ItemForCli
       return [key, c]
     })
   )
-  const order = canManage
+  const order = canManage || canDelete
     ? ITEMS_TABLE_COLUMN_ORDER
     : ITEMS_TABLE_COLUMN_ORDER.filter((id) => id !== "ops")
   return order.map((id) => byId[id]).filter(Boolean) as ColumnDef<ItemForClient>[]
